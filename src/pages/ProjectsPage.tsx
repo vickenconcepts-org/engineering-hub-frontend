@@ -6,9 +6,10 @@ import { projectService, Project } from '../services/project.service';
 
 interface ProjectsPageProps {
   onNavigate: (path: string) => void;
+  userRole?: 'client' | 'company' | 'admin' | null;
 }
 
-export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
+export function ProjectsPage({ onNavigate, userRole }: ProjectsPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,16 +22,25 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
   
   useEffect(() => {
     loadProjects();
-  }, [currentPage]);
+  }, [currentPage, userRole]);
   
   const loadProjects = async () => {
     try {
       setIsLoading(true);
-      const { projects: fetchedProjects, meta } = await projectService.list({
-        per_page: 15,
-      });
-      setProjects(fetchedProjects);
-      setPaginationMeta(meta);
+      // Use role-specific endpoints
+      if (userRole === 'company') {
+        const { projects: fetchedProjects, meta } = await projectService.listForCompany({
+          per_page: 15,
+        });
+        setProjects(fetchedProjects);
+        setPaginationMeta(meta);
+      } else if (userRole === 'client') {
+        const { projects: fetchedProjects, meta } = await projectService.list({
+          per_page: 15,
+        });
+        setProjects(fetchedProjects);
+        setPaginationMeta(meta);
+      }
     } catch (error) {
       console.error('Failed to load projects:', error);
     } finally {

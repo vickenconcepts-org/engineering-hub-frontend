@@ -8,18 +8,33 @@ import { Modal } from '../components/Modal';
 import { Textarea } from '../components/Textarea';
 import { projectService, Project, Milestone } from '../services/project.service';
 import { milestoneService } from '../services/milestone.service';
+import { adminService } from '../services/admin.service';
+import { getFileUrl } from '../lib/file-utils';
 import apiClient from '../lib/api-client';
+import { Input } from '../components/Input';
 
 interface MilestoneDetailPageProps {
   onNavigate: (path: string) => void;
+  userRole?: 'client' | 'company' | 'admin' | null;
 }
 
-export function MilestoneDetailPage({ onNavigate }: MilestoneDetailPageProps) {
+export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPageProps) {
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [disputeModalOpen, setDisputeModalOpen] = useState(false);
+  const [uploadEvidenceModalOpen, setUploadEvidenceModalOpen] = useState(false);
+  const [releaseEscrowModalOpen, setReleaseEscrowModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [disputeReason, setDisputeReason] = useState('');
+  const [evidenceType, setEvidenceType] = useState<'image' | 'video' | 'text'>('image');
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceDescription, setEvidenceDescription] = useState('');
+  const [recipientAccount, setRecipientAccount] = useState({
+    account_number: '',
+    bank_code: '',
+    name: '',
+  });
+  const [adminOverride, setAdminOverride] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
   const [milestone, setMilestone] = useState<Milestone | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,14 +47,22 @@ export function MilestoneDetailPage({ onNavigate }: MilestoneDetailPageProps) {
     if (milestoneId) {
       loadMilestone();
     }
-  }, [milestoneId]);
+  }, [milestoneId, userRole]);
   
   const loadMilestone = async () => {
     try {
       setIsLoading(true);
       // Get all projects to find the one containing this milestone
       // Note: In production, consider adding GET /api/milestones/{id} endpoint
-      const { projects } = await projectService.list({ per_page: 100 });
+      // Use role-specific endpoints
+      let projects: Project[];
+      if (userRole === 'company') {
+        const result = await projectService.listForCompany({ per_page: 100 });
+        projects = result.projects;
+      } else {
+        const result = await projectService.list({ per_page: 100 });
+        projects = result.projects;
+      }
       
       // Find project containing this milestone
       let foundProject: Project | null = null;
@@ -160,14 +183,6 @@ export function MilestoneDetailPage({ onNavigate }: MilestoneDetailPageProps) {
   const photoEvidence = milestone?.evidence?.filter(e => e.type === 'image') || [];
   const videoEvidence = milestone?.evidence?.filter(e => e.type === 'video') || [];
   const textEvidence = milestone?.evidence?.filter(e => e.type === 'text') || [];
-  
-  // Get file URL (assuming backend serves files from storage)
-  const getFileUrl = (filePath?: string) => {
-    if (!filePath) return '';
-    // Construct URL - adjust based on your backend file serving setup
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-    return `${apiBaseUrl.replace('/api', '')}/storage/${filePath}`;
-  };
   
   if (isLoading) {
     return (
@@ -442,8 +457,8 @@ export function MilestoneDetailPage({ onNavigate }: MilestoneDetailPageProps) {
             </CardContent>
           </Card>
           
-          {/* Actions */}
-          {milestone.status === 'submitted' && (
+          {/* Client Actions */}
+          {userRole === 'client' && milestone.status === 'submitted' && (
             <Card>
               <CardHeader>
                 <CardTitle>Review Actions</CardTitle>
@@ -482,7 +497,8 @@ export function MilestoneDetailPage({ onNavigate }: MilestoneDetailPageProps) {
             </Card>
           )}
           
-          {milestone.status === 'pending' && !milestone.escrow && (
+          {/* Client: Funding Required */}
+          {userRole === 'client' && milestone.status === 'pending' && !milestone.escrow && (
             <Card>
               <CardHeader>
                 <CardTitle>Funding Required</CardTitle>
@@ -508,20 +524,127 @@ export function MilestoneDetailPage({ onNavigate }: MilestoneDetailPageProps) {
             </Card>
           )}
           
-          {/* Guidelines */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Approval Guidelines</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm text-[#64748B]">
-                <p>Review all photo and video evidence carefully.</p>
-                <p>Verify work matches the milestone description.</p>
-                <p>Check quality meets agreed specifications.</p>
-                <p>Contact company if you need clarification.</p>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Company Actions */}
+          {userRole === 'company' && milestone.status === 'funded' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Milestone Actions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Button
+                    fullWidth
+                    onClick={() => setUploadEvidenceModalOpen(true)}
+                    disabled={isProcessing}
+                  >
+                    <ImageIcon className="w-4 h-4 mr-2" />
+                    Upload Evidence
+                  </Button>
+                  
+                  {milestone.evidence && milestone.evidence.length > 0 && (
+                    <Button
+                      fullWidth
+                      variant="primary"
+                      onClick={async () => {
+                        try {
+                          setIsProcessing(true);
+                          await milestoneService.submit(milestone.id);
+                          toast.success('Milestone submitted for approval!');
+                          loadMilestone();
+                        } catch (error) {
+                          console.error('Submit error:', error);
+                        } finally {
+                          setIsProcessing(false);
+                        }
+                      }}
+                      disabled={isProcessing}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Submit for Approval
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-[#64748B] mt-3">
+                  Upload evidence of completed work, then submit for client approval.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Admin: Escrow Release */}
+          {userRole === 'admin' && milestone.escrow && milestone.escrow.status === 'held' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Escrow Release</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                      Escrow Amount
+                    </p>
+                    <p className="text-2xl font-semibold text-[#334155]">
+                      ₦{milestone.escrow.amount.toLocaleString()}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                      Milestone Status
+                    </p>
+                    <StatusBadge status={milestone.status} />
+                  </div>
+                  
+                  {milestone.status !== 'approved' && (
+                    <div className="bg-[#FEF3C7] rounded-lg p-3 border border-[#F59E0B]/20">
+                      <label className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          checked={adminOverride}
+                          onChange={(e) => setAdminOverride(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 rounded border-[#E5E7EB] text-[#1E3A8A] focus:ring-[#1E3A8A]"
+                        />
+                        <span className="text-xs text-[#334155]">
+                          Override: Release funds without client approval
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                  
+                  <Button
+                    fullWidth
+                    onClick={() => setReleaseEscrowModalOpen(true)}
+                    disabled={isProcessing || (milestone.status !== 'approved' && !adminOverride)}
+                  >
+                    Release Escrow Funds
+                  </Button>
+                  
+                  <p className="text-xs text-[#64748B]">
+                    {milestone.status === 'approved'
+                      ? 'Milestone is approved. Release funds to company.'
+                      : 'Use override to release funds without client approval.'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Guidelines - Client Only */}
+          {userRole === 'client' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Approval Guidelines</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm text-[#64748B]">
+                  <p>Review all photo and video evidence carefully.</p>
+                  <p>Verify work matches the milestone description.</p>
+                  <p>Check quality meets agreed specifications.</p>
+                  <p>Contact company if you need clarification.</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
       
@@ -643,6 +766,242 @@ export function MilestoneDetailPage({ onNavigate }: MilestoneDetailPageProps) {
           </p>
         </div>
       </Modal>
+      
+      {/* Upload Evidence Modal - Company Only */}
+      {userRole === 'company' && (
+        <Modal
+          isOpen={uploadEvidenceModalOpen}
+          onClose={() => !isProcessing && setUploadEvidenceModalOpen(false)}
+          title="Upload Evidence"
+          size="lg"
+          primaryAction={{
+            label: isProcessing ? 'Uploading...' : 'Upload Evidence',
+            onClick: async () => {
+              if (!evidenceDescription.trim()) {
+                toast.error('Description is required');
+                return;
+              }
+              if (evidenceType !== 'text' && !evidenceFile) {
+                toast.error('File is required for image/video evidence');
+                return;
+              }
+              
+              try {
+                setIsProcessing(true);
+                await milestoneService.uploadEvidence(milestone.id, {
+                  type: evidenceType,
+                  file: evidenceFile || undefined,
+                  description: evidenceDescription,
+                });
+                toast.success('Evidence uploaded successfully!');
+                setUploadEvidenceModalOpen(false);
+                setEvidenceFile(null);
+                setEvidenceDescription('');
+                setEvidenceType('image');
+                loadMilestone();
+              } catch (error) {
+                console.error('Upload error:', error);
+              } finally {
+                setIsProcessing(false);
+              }
+            },
+            disabled: isProcessing,
+          }}
+          secondaryAction={{
+            label: 'Cancel',
+            onClick: () => {
+              setUploadEvidenceModalOpen(false);
+              setEvidenceFile(null);
+              setEvidenceDescription('');
+            },
+            disabled: isProcessing,
+          }}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-2">
+                Evidence Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={evidenceType}
+                onChange={(e) => {
+                  setEvidenceType(e.target.value as 'image' | 'video' | 'text');
+                  setEvidenceFile(null);
+                }}
+                className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none"
+                disabled={isProcessing}
+              >
+                <option value="image">Photo</option>
+                <option value="video">Video</option>
+                <option value="text">Text Note</option>
+              </select>
+            </div>
+            
+            {(evidenceType === 'image' || evidenceType === 'video') && (
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-2">
+                  File <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept={evidenceType === 'image' ? 'image/*' : 'video/*'}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setEvidenceFile(e.target.files[0]);
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none"
+                  disabled={isProcessing}
+                />
+                <p className="text-xs text-[#64748B] mt-1">
+                  Max file size: 10MB. Supported: {evidenceType === 'image' ? 'JPG, PNG' : 'MP4, MOV, AVI'}
+                </p>
+                {evidenceFile && (
+                  <p className="text-sm text-[#334155] mt-2">
+                    Selected: {evidenceFile.name}
+                  </p>
+                )}
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-2">
+                Description <span className="text-red-500">*</span>
+              </label>
+              <Textarea
+                value={evidenceDescription}
+                onChange={(e) => setEvidenceDescription(e.target.value)}
+                placeholder="Describe the evidence or work completed..."
+                rows={4}
+                disabled={isProcessing}
+                required
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+      
+      {/* Admin: Release Escrow Modal */}
+      {userRole === 'admin' && (
+        <Modal
+          isOpen={releaseEscrowModalOpen}
+          onClose={() => !isProcessing && setReleaseEscrowModalOpen(false)}
+          title="Release Escrow Funds"
+          size="lg"
+          primaryAction={{
+            label: isProcessing ? 'Releasing...' : 'Release Funds',
+            onClick: async () => {
+              if (!milestone || !milestone.escrow) return;
+              
+              if (!recipientAccount.account_number || !recipientAccount.bank_code || !recipientAccount.name) {
+                toast.error('Please fill in all recipient account details');
+                return;
+              }
+              
+              setIsProcessing(true);
+              try {
+                await adminService.releaseEscrow(milestone.id, {
+                  override: adminOverride,
+                  recipient_account: recipientAccount,
+                });
+                toast.success('Escrow funds released successfully!');
+                setReleaseEscrowModalOpen(false);
+                setRecipientAccount({ account_number: '', bank_code: '', name: '' });
+                setAdminOverride(false);
+                loadMilestone();
+              } catch (error) {
+                console.error('Release error:', error);
+              } finally {
+                setIsProcessing(false);
+              }
+            },
+            disabled: isProcessing || !recipientAccount.account_number || !recipientAccount.bank_code || !recipientAccount.name,
+          }}
+          secondaryAction={{
+            label: 'Cancel',
+            onClick: () => {
+              setReleaseEscrowModalOpen(false);
+              setRecipientAccount({ account_number: '', bank_code: '', name: '' });
+              setAdminOverride(false);
+            },
+            disabled: isProcessing,
+          }}
+        >
+          <div className="space-y-4">
+            <div className="bg-[#F8FAFC] rounded-lg p-4 border border-[#E5E7EB]">
+              <p className="text-sm text-[#334155] mb-2">
+                <strong>Release Details:</strong>
+              </p>
+              <div className="space-y-1 text-sm text-[#64748B]">
+                <p>Milestone: {milestone?.title}</p>
+                <p>Amount: ₦{milestone?.escrow?.amount.toLocaleString()}</p>
+                <p>Status: {milestone?.status}</p>
+              </div>
+            </div>
+            
+            {milestone?.status !== 'approved' && (
+              <div className="bg-[#FEF3C7] rounded-lg p-3 border border-[#F59E0B]/20">
+                <label className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={adminOverride}
+                    onChange={(e) => setAdminOverride(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-[#E5E7EB] text-[#1E3A8A] focus:ring-[#1E3A8A]"
+                  />
+                  <span className="text-xs text-[#334155]">
+                    Override client approval requirement
+                  </span>
+                </label>
+              </div>
+            )}
+            
+            <div>
+              <p className="text-sm font-medium text-[#334155] mb-3">
+                Recipient Bank Account Details
+              </p>
+              
+              <div className="space-y-3">
+                <Input
+                  label="Account Number"
+                  placeholder="0123456789"
+                  value={recipientAccount.account_number}
+                  onChange={(e) => setRecipientAccount({ ...recipientAccount, account_number: e.target.value })}
+                  required
+                />
+                
+                <Input
+                  label="Bank Code"
+                  placeholder="058"
+                  value={recipientAccount.bank_code}
+                  onChange={(e) => setRecipientAccount({ ...recipientAccount, bank_code: e.target.value })}
+                  helperText="Paystack bank code (e.g., 058 for GTBank)"
+                  required
+                />
+                
+                <Input
+                  label="Account Name"
+                  placeholder="Company Name"
+                  value={recipientAccount.name}
+                  onChange={(e) => setRecipientAccount({ ...recipientAccount, name: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="bg-[#D1FAE5] rounded-lg p-4 border border-[#16A34A]/20">
+              <p className="text-sm text-[#334155] mb-2">
+                <strong>This action will:</strong>
+              </p>
+              <ul className="space-y-1 text-sm text-[#64748B]">
+                <li>• Transfer funds from escrow to company account</li>
+                <li>• Mark milestone as released</li>
+                <li>• Update escrow status</li>
+                <li>• Notify both parties</li>
+              </ul>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

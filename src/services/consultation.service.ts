@@ -82,7 +82,7 @@ export interface PaymentInitResponse {
 
 /**
  * Consultation Service
- * Handles all consultation-related API calls for clients
+ * Handles all consultation-related API calls for clients and companies
  */
 export const consultationService = {
   /**
@@ -103,7 +103,24 @@ export const consultationService = {
   },
 
   /**
-   * Get a specific consultation by ID
+   * List company's consultations with pagination
+   */
+  async listForCompany(params?: { per_page?: number }): Promise<{ consultations: Consultation[]; meta: PaginationMeta }> {
+    const response = await apiClient.get<ApiResponse<Consultation[]>>('/company/consultations', {
+      params,
+    });
+    
+    const consultations = extractData<Consultation[]>(response);
+    const meta = extractMeta(response) as PaginationMeta;
+    
+    return {
+      consultations,
+      meta,
+    };
+  },
+
+  /**
+   * Get a specific consultation by ID (client)
    */
   async get(id: number): Promise<Consultation> {
     const response = await apiClient.get<ApiResponse<Consultation>>(`/client/consultations/${id}`);
@@ -111,7 +128,15 @@ export const consultationService = {
   },
 
   /**
-   * Create a new consultation booking
+   * Get a specific consultation by ID (company)
+   */
+  async getForCompany(id: number): Promise<Consultation> {
+    const response = await apiClient.get<ApiResponse<Consultation>>(`/company/consultations/${id}`);
+    return extractData<Consultation>(response);
+  },
+
+  /**
+   * Create a new consultation booking (client only)
    */
   async create(data: CreateConsultationData): Promise<Consultation> {
     const response = await apiClient.post<ApiResponse<Consultation>>('/client/consultations', data);
@@ -119,7 +144,7 @@ export const consultationService = {
   },
 
   /**
-   * Initialize payment for a consultation
+   * Initialize payment for a consultation (client only)
    * Returns payment URL to redirect user to payment gateway
    */
   async pay(id: number): Promise<PaymentInitResponse> {
@@ -127,6 +152,16 @@ export const consultationService = {
       `/client/consultations/${id}/pay`
     );
     return extractData<PaymentInitResponse>(response);
+  },
+
+  /**
+   * Mark consultation as completed (company only)
+   */
+  async complete(id: number): Promise<Consultation> {
+    const response = await apiClient.post<ApiResponse<Consultation>>(
+      `/company/consultations/${id}/complete`
+    );
+    return extractData<Consultation>(response);
   },
 };
 

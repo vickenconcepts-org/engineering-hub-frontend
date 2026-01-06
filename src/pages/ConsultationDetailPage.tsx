@@ -1,32 +1,38 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Calendar, Clock, Video, FileText, ArrowLeft, DollarSign } from 'lucide-react';
+import { Calendar, Clock, Video, FileText, ArrowLeft, DollarSign, CheckCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
 import { consultationService, Consultation } from '../services/consultation.service';
 
 interface ConsultationDetailPageProps {
-  onNavigate: (path: string) => void;
+  consultationId: number;
+  userRole?: 'client' | 'company' | 'admin' | null;
 }
 
-export function ConsultationDetailPage({ onNavigate }: ConsultationDetailPageProps) {
+export function ConsultationDetailPage({ consultationId, userRole }: ConsultationDetailPageProps) {
   const [consultation, setConsultation] = useState<Consultation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Extract consultation ID from current path
-  const consultationId = parseInt(window.location.pathname.split('/consultations/')[1]?.split('#')[0] || '0');
+  const navigate = useNavigate();
   
   useEffect(() => {
     if (consultationId) {
       loadConsultation();
     }
-  }, [consultationId]);
+  }, [consultationId, userRole]);
   
   const loadConsultation = async () => {
     try {
       setIsLoading(true);
-      const fetchedConsultation = await consultationService.get(consultationId);
+      // Use role-specific endpoints
+      let fetchedConsultation: Consultation;
+      if (userRole === 'company') {
+        fetchedConsultation = await consultationService.getForCompany(consultationId);
+      } else {
+        fetchedConsultation = await consultationService.get(consultationId);
+      }
       setConsultation(fetchedConsultation);
     } catch (error) {
       console.error('Failed to load consultation:', error);
@@ -67,7 +73,7 @@ export function ConsultationDetailPage({ onNavigate }: ConsultationDetailPagePro
     return (
       <div className="space-y-6">
         <button
-          onClick={() => onNavigate('/consultations')}
+          onClick={() => navigate('/consultations')}
           className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -85,7 +91,7 @@ export function ConsultationDetailPage({ onNavigate }: ConsultationDetailPagePro
     return (
       <div className="space-y-6">
         <button
-          onClick={() => onNavigate('/consultations')}
+          onClick={() => navigate('/consultations')}
           className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -221,11 +227,31 @@ export function ConsultationDetailPage({ onNavigate }: ConsultationDetailPagePro
                 </div>
               )}
               
-              {consultation.status === 'scheduled' && !consultation.is_paid && (
+              {userRole === 'client' && consultation.status === 'scheduled' && !consultation.is_paid && (
                 <div className="mt-6 pt-6 border-t border-[#E5E7EB]">
                   <Button fullWidth onClick={handlePay}>
                     <DollarSign className="w-4 h-4 mr-2" />
                     Pay Consultation Fee (₦{consultation.price.toLocaleString()})
+                  </Button>
+                </div>
+              )}
+              
+              {userRole === 'company' && consultation.status === 'scheduled' && consultation.is_paid && !consultation.is_completed && (
+                <div className="mt-6 pt-6 border-t border-[#E5E7EB]">
+                  <Button 
+                    fullWidth 
+                    onClick={async () => {
+                      try {
+                        await consultationService.complete(consultation.id);
+                        toast.success('Consultation marked as completed');
+                        loadConsultation();
+                      } catch (error) {
+                        console.error('Failed to complete consultation:', error);
+                      }
+                    }}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Mark as Completed
                   </Button>
                 </div>
               )}

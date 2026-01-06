@@ -1,71 +1,118 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { ArrowLeft, AlertCircle, DollarSign, FileText, Image as ImageIcon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Textarea } from '../components/Textarea';
-import { CurrencyInput } from '../components/CurrencyInput';
+import { Input } from '../components/Input';
+import { adminService, Dispute } from '../services/admin.service';
 
 interface AdminDisputePageProps {
   onNavigate: (path: string) => void;
 }
 
 export function AdminDisputePage({ onNavigate }: AdminDisputePageProps) {
-  const [releaseModalOpen, setReleaseModalOpen] = useState(false);
-  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [resolveModalOpen, setResolveModalOpen] = useState(false);
   const [resolutionNotes, setResolutionNotes] = useState('');
-  const [refundAmount, setRefundAmount] = useState('');
+  const [resolutionStatus, setResolutionStatus] = useState<'resolved' | 'escalated'>('resolved');
+  const [dispute, setDispute] = useState<Dispute | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   
-  // Mock data
-  const dispute = {
-    id: 1,
-    status: 'pending' as const,
-    openedDate: 'January 8, 2026',
-    project: {
-      id: 1,
-      name: 'Residential Home - Lagos',
-      budget: 125000,
-      escrowBalance: 68750,
-    },
-    client: {
-      name: 'John Doe',
-      email: 'john@example.com',
-      phone: '+1 234 567 8900',
-    },
-    company: {
-      name: 'AfricaBuild Ltd',
-      email: 'john@africabuild.com',
-      phone: '+234 123 456 7890',
-    },
-    milestone: {
-      id: 2,
-      name: 'Structure & Roofing',
-      amount: 31250,
-    },
-    reason: 'Quality concerns with foundation work. Cracks appeared in the foundation after completion. Requesting inspection and remediation.',
-    clientEvidence: [
-      { id: 1, type: 'photo', url: 'https://images.unsplash.com/photo-1590479773265-7464e5d48118?w=800', caption: 'Foundation cracks' },
-      { id: 2, type: 'photo', url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800', caption: 'Structural issues' },
-    ],
-    companyResponse: 'Foundation meets all specifications. Cracks are superficial and within normal range for settling. We are willing to provide additional documentation from structural engineer.',
-    companyEvidence: [
-      { id: 1, type: 'document', name: 'Structural Engineer Report.pdf' },
-      { id: 2, type: 'document', name: 'Foundation Specifications.pdf' },
-    ],
+  // Extract dispute ID from current path
+  const disputeId = parseInt(window.location.pathname.split('/admin/disputes/')[1]?.split('#')[0] || '0');
+  
+  useEffect(() => {
+    if (disputeId) {
+      loadDispute();
+    }
+  }, [disputeId]);
+  
+  const loadDispute = async () => {
+    try {
+      setIsLoading(true);
+      const fetchedDispute = await adminService.getDispute(disputeId);
+      setDispute(fetchedDispute);
+    } catch (error) {
+      console.error('Failed to load dispute:', error);
+      toast.error('Failed to load dispute details');
+      onNavigate('/admin/disputes');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  const handleRelease = () => {
-    setReleaseModalOpen(false);
-    // In production, would release funds
-    onNavigate('/admin/disputes');
+  const handleResolve = async () => {
+    if (!dispute || !resolutionNotes.trim()) {
+      toast.error('Please provide resolution notes');
+      return;
+    }
+    
+    try {
+      setIsProcessing(true);
+      await adminService.resolveDispute(dispute.id, {
+        resolution: resolutionNotes,
+        status: resolutionStatus,
+      });
+      toast.success('Dispute resolved successfully');
+      setResolveModalOpen(false);
+      setResolutionNotes('');
+      loadDispute();
+    } catch (error) {
+      console.error('Failed to resolve dispute:', error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
   
-  const handleRefund = () => {
-    setRefundModalOpen(false);
-    // In production, would process refund
-    onNavigate('/admin/disputes');
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   };
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open':
+        return 'yellow';
+      case 'resolved':
+        return 'green';
+      case 'escalated':
+        return 'red';
+      default:
+        return 'gray';
+    }
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
+          <p className="text-sm text-[#64748B]">Loading dispute details...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!dispute) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent>
+            <div className="text-center py-12">
+              <p className="text-sm text-[#64748B]">Dispute not found</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
   
   return (
     <div className="space-y-6">
@@ -85,26 +132,42 @@ export function AdminDisputePage({ onNavigate }: AdminDisputePageProps) {
             Dispute #{dispute.id}
           </h1>
           <p className="text-sm text-[#64748B]">
-            {dispute.project.name} • Opened: {dispute.openedDate}
+            {dispute.project?.title || 'Project'} • Opened: {formatDate(dispute.created_at)}
           </p>
         </div>
-        <StatusBadge status={dispute.status} />
+        <StatusBadge status={dispute.status} color={getStatusColor(dispute.status)} />
       </div>
       
       {/* Alert Banner */}
-      <div className="bg-[#FEF3C7] rounded-lg p-4 border border-[#F59E0B]/20">
-        <div className="flex gap-3">
-          <AlertCircle className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-[#334155] mb-1">
-              Disputed Milestone: {dispute.milestone.name}
-            </p>
-            <p className="text-sm text-[#64748B]">
-              ${dispute.milestone.amount.toLocaleString()} in escrow is on hold pending resolution.
-            </p>
+      {dispute.status === 'open' && dispute.milestone && (
+        <div className="bg-[#FEF3C7] rounded-lg p-4 border border-[#F59E0B]/20">
+          <div className="flex gap-3">
+            <AlertCircle className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-[#334155] mb-1">
+                Disputed Milestone: {dispute.milestone.title}
+              </p>
+              <p className="text-sm text-[#64748B]">
+                ₦{dispute.milestone.amount.toLocaleString()} in escrow is on hold pending resolution.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+      
+      {dispute.resolution_notes && (
+        <div className="bg-[#D1FAE5] rounded-lg p-4 border border-[#16A34A]/20">
+          <div className="flex gap-3">
+            <AlertCircle className="w-5 h-5 text-[#16A34A] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-[#334155] mb-1">
+                Resolution
+              </p>
+              <p className="text-sm text-[#334155]">{dispute.resolution_notes}</p>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Content */}
@@ -120,9 +183,14 @@ export function AdminDisputePage({ onNavigate }: AdminDisputePageProps) {
               <div className="space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                    Client Name
+                    Raised By
                   </p>
-                  <p className="text-sm text-[#334155] font-medium">{dispute.client.name}</p>
+                  <p className="text-sm text-[#334155] font-medium">
+                    {dispute.raised_by_user?.name || 'Client'}
+                  </p>
+                  {dispute.raised_by_user?.email && (
+                    <p className="text-xs text-[#64748B] mt-1">{dispute.raised_by_user.email}</p>
+                  )}
                 </div>
                 
                 <div>
@@ -131,94 +199,110 @@ export function AdminDisputePage({ onNavigate }: AdminDisputePageProps) {
                   </p>
                   <p className="text-sm text-[#334155]">{dispute.reason}</p>
                 </div>
-                
-                {dispute.clientEvidence.length > 0 && (
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-3">
-                      Evidence Submitted
-                    </p>
-                    <div className="grid grid-cols-2 gap-4">
-                      {dispute.clientEvidence.map((evidence) => (
-                        <div key={evidence.id} className="space-y-2">
-                          <div className="aspect-video rounded-lg overflow-hidden bg-[#F8FAFC] border border-[#E5E7EB]">
-                            <img
-                              src={evidence.url}
-                              alt={evidence.caption}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <p className="text-xs text-[#64748B]">{evidence.caption}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
           
-          {/* Company Response */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Company Response</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                    Company Name
-                  </p>
-                  <p className="text-sm text-[#334155] font-medium">{dispute.company.name}</p>
-                </div>
-                
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                    Response
-                  </p>
-                  <p className="text-sm text-[#334155]">{dispute.companyResponse}</p>
-                </div>
-                
-                {dispute.companyEvidence.length > 0 && (
+          {/* Company Information */}
+          {dispute.project && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Project & Company</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-3">
-                      Supporting Documents
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                      Project
                     </p>
-                    <div className="space-y-2">
-                      {dispute.companyEvidence.map((evidence) => (
-                        <div
-                          key={evidence.id}
-                          className="flex items-center justify-between p-3 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]"
-                        >
-                          <div className="flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-[#64748B]" />
-                            <span className="text-sm text-[#334155]">{evidence.name}</span>
-                          </div>
-                          <Button size="sm" variant="ghost">View</Button>
-                        </div>
-                      ))}
-                    </div>
+                    <p className="text-sm text-[#334155] font-medium">{dispute.project.title}</p>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                  
+                  {dispute.milestone && (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                        Disputed Milestone
+                      </p>
+                      <p className="text-sm text-[#334155]">{dispute.milestone.title}</p>
+                      <p className="text-xs text-[#64748B] mt-1">
+                        Amount: ₦{dispute.milestone.amount.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
           
-          {/* Resolution */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Resolution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                label="Resolution Notes"
-                placeholder="Document your decision and reasoning..."
-                value={resolutionNotes}
-                onChange={(e) => setResolutionNotes(e.target.value)}
-                rows={6}
-                helperText="This will be sent to both parties."
-              />
-            </CardContent>
-          </Card>
+          {/* Resolution - Only show if dispute is open */}
+          {dispute.status === 'open' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Resolution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#334155] mb-2">
+                      Resolution Status
+                    </label>
+                    <select
+                      value={resolutionStatus}
+                      onChange={(e) => setResolutionStatus(e.target.value as 'resolved' | 'escalated')}
+                      className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none"
+                    >
+                      <option value="resolved">Resolved</option>
+                      <option value="escalated">Escalated</option>
+                    </select>
+                  </div>
+                  
+                  <Textarea
+                    label="Resolution Notes"
+                    placeholder="Document your decision and reasoning..."
+                    value={resolutionNotes}
+                    onChange={(e) => setResolutionNotes(e.target.value)}
+                    rows={6}
+                    helperText="This will be sent to both parties."
+                    required
+                  />
+                  
+                  <Button
+                    fullWidth
+                    onClick={() => setResolveModalOpen(true)}
+                    disabled={!resolutionNotes.trim()}
+                  >
+                    Resolve Dispute
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Show resolution if already resolved */}
+          {dispute.status !== 'open' && dispute.resolution_notes && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Resolution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                      Status
+                    </p>
+                    <StatusBadge status={dispute.status} color={getStatusColor(dispute.status)} />
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                      Resolution Notes
+                    </p>
+                    <p className="text-sm text-[#334155]">{dispute.resolution_notes}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
         
         {/* Sidebar */}
@@ -230,201 +314,130 @@ export function AdminDisputePage({ onNavigate }: AdminDisputePageProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                    Project Name
-                  </p>
-                  <button
-                    onClick={() => onNavigate(`/projects/${dispute.project.id}`)}
-                    className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8]"
-                  >
-                    {dispute.project.name}
-                  </button>
-                </div>
-                
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                    Total Budget
-                  </p>
-                  <p className="text-sm text-[#334155] font-medium">
-                    ${dispute.project.budget.toLocaleString()}
-                  </p>
-                </div>
-                
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                    Escrow Balance
-                  </p>
-                  <p className="text-sm text-[#334155] font-medium">
-                    ${dispute.project.escrowBalance.toLocaleString()}
-                  </p>
-                </div>
-                
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                    Disputed Amount
-                  </p>
-                  <p className="text-sm text-[#334155] font-medium">
-                    ${dispute.milestone.amount.toLocaleString()}
-                  </p>
-                </div>
+                {dispute.project && (
+                  <>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                        Project Name
+                      </p>
+                      <button
+                        onClick={() => onNavigate(`/projects/${dispute.project?.id}`)}
+                        className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] hover:underline"
+                      >
+                        {dispute.project.title}
+                      </button>
+                    </div>
+                    
+                    {dispute.milestone && (
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                          Disputed Milestone
+                        </p>
+                        <p className="text-sm text-[#334155] font-medium">
+                          {dispute.milestone.title}
+                        </p>
+                        <p className="text-xs text-[#64748B] mt-1">
+                          Amount: ₦{dispute.milestone.amount.toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
           
-          {/* Contact Info */}
+          {/* Dispute Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Contact Information</CardTitle>
+              <CardTitle>Dispute Information</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-2">
-                    Client
+                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                    Status
                   </p>
-                  <p className="text-sm text-[#334155] font-medium mb-1">
-                    {dispute.client.name}
-                  </p>
-                  <p className="text-xs text-[#64748B] mb-0.5">{dispute.client.email}</p>
-                  <p className="text-xs text-[#64748B]">{dispute.client.phone}</p>
+                  <StatusBadge status={dispute.status} color={getStatusColor(dispute.status)} />
                 </div>
                 
-                <div className="pt-4 border-t border-[#E5E7EB]">
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-2">
-                    Company
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                    Opened Date
                   </p>
-                  <p className="text-sm text-[#334155] font-medium mb-1">
-                    {dispute.company.name}
-                  </p>
-                  <p className="text-xs text-[#64748B] mb-0.5">{dispute.company.email}</p>
-                  <p className="text-xs text-[#64748B]">{dispute.company.phone}</p>
+                  <p className="text-sm text-[#334155]">{formatDate(dispute.created_at)}</p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Resolution Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <Button
-                  fullWidth
-                  onClick={() => setReleaseModalOpen(true)}
-                >
-                  Release to Company
-                </Button>
                 
-                <Button
-                  fullWidth
-                  variant="secondary"
-                  onClick={() => setRefundModalOpen(true)}
-                >
-                  Refund to Client
-                </Button>
+                {dispute.raised_by_user && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                      Raised By
+                    </p>
+                    <p className="text-sm text-[#334155]">{dispute.raised_by_user.name}</p>
+                    <p className="text-xs text-[#64748B] mt-1">{dispute.raised_by_user.email}</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
       
-      {/* Release Modal */}
+      {/* Resolve Dispute Modal */}
       <Modal
-        isOpen={releaseModalOpen}
-        onClose={() => setReleaseModalOpen(false)}
-        title="Release Funds to Company"
-        primaryAction={{
-          label: 'Release Funds',
-          onClick: handleRelease,
-        }}
-        secondaryAction={{
-          label: 'Cancel',
-          onClick: () => setReleaseModalOpen(false),
-        }}
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-[#64748B]">
-            You are about to release{' '}
-            <strong className="text-[#334155]">${dispute.milestone.amount.toLocaleString()}</strong>{' '}
-            to <strong className="text-[#334155]">{dispute.company.name}</strong>.
-          </p>
-          
-          <div className="bg-[#F8FAFC] rounded-lg p-4 border border-[#E5E7EB]">
-            <p className="text-sm text-[#334155] mb-2">
-              <strong>This action will:</strong>
-            </p>
-            <ul className="space-y-1 text-sm text-[#64748B]">
-              <li>• Transfer funds from escrow to company</li>
-              <li>• Mark milestone as approved</li>
-              <li>• Close this dispute</li>
-              <li>• Notify both parties</li>
-            </ul>
-          </div>
-          
-          <Textarea
-            label="Resolution Notes (Required)"
-            placeholder="Explain your decision..."
-            value={resolutionNotes}
-            onChange={(e) => setResolutionNotes(e.target.value)}
-            rows={4}
-            required
-          />
-        </div>
-      </Modal>
-      
-      {/* Refund Modal */}
-      <Modal
-        isOpen={refundModalOpen}
-        onClose={() => setRefundModalOpen(false)}
-        title="Refund to Client"
+        isOpen={resolveModalOpen}
+        onClose={() => !isProcessing && setResolveModalOpen(false)}
+        title="Resolve Dispute"
         size="lg"
         primaryAction={{
-          label: 'Process Refund',
-          onClick: handleRefund,
-          variant: 'danger',
+          label: isProcessing ? 'Resolving...' : 'Resolve Dispute',
+          onClick: handleResolve,
+          disabled: isProcessing || !resolutionNotes.trim(),
         }}
         secondaryAction={{
           label: 'Cancel',
-          onClick: () => setRefundModalOpen(false),
+          onClick: () => {
+            setResolveModalOpen(false);
+            setResolutionNotes('');
+          },
+          disabled: isProcessing,
         }}
       >
         <div className="space-y-4">
           <p className="text-sm text-[#64748B]">
-            Process a refund to <strong className="text-[#334155]">{dispute.client.name}</strong>.
+            Resolve this dispute and provide resolution notes that will be sent to both parties.
           </p>
           
-          <CurrencyInput
-            label="Refund Amount"
-            placeholder="0.00"
-            value={refundAmount}
-            onChange={(e) => setRefundAmount(e.target.value)}
-            helperText={`Maximum: $${dispute.milestone.amount.toLocaleString()}`}
-            required
-          />
+          <div>
+            <label className="block text-sm font-medium text-[#334155] mb-2">
+              Resolution Status
+            </label>
+            <select
+              value={resolutionStatus}
+              onChange={(e) => setResolutionStatus(e.target.value as 'resolved' | 'escalated')}
+              className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none"
+              disabled={isProcessing}
+            >
+              <option value="resolved">Resolved</option>
+              <option value="escalated">Escalated</option>
+            </select>
+            <p className="text-xs text-[#64748B] mt-1">
+              {resolutionStatus === 'resolved' 
+                ? 'Mark dispute as resolved and close the case.'
+                : 'Escalate dispute for further review.'}
+            </p>
+          </div>
           
           <Textarea
             label="Resolution Notes (Required)"
-            placeholder="Explain your decision..."
+            placeholder="Explain your decision and reasoning..."
             value={resolutionNotes}
             onChange={(e) => setResolutionNotes(e.target.value)}
-            rows={4}
+            rows={6}
             required
+            disabled={isProcessing}
+            helperText="This will be sent to both the client and company."
           />
-          
-          <div className="bg-[#FEE2E2] rounded-lg p-4 border border-[#DC2626]/20">
-            <p className="text-sm text-[#334155]">
-              <strong>This action will:</strong>
-            </p>
-            <ul className="mt-2 space-y-1 text-sm text-[#64748B]">
-              <li>• Return specified amount to client</li>
-              <li>• Mark milestone as rejected</li>
-              <li>• Close this dispute</li>
-              <li>• Notify both parties</li>
-            </ul>
-          </div>
         </div>
       </Modal>
     </div>

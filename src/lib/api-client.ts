@@ -32,7 +32,7 @@ const apiClient: AxiosInstance = axios.create({
 });
 
 /**
- * Request interceptor - Add auth token to headers
+ * Request interceptor - Add auth token to headers and handle FormData
  */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -40,6 +40,12 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // If FormData, remove Content-Type header to let axios set it with boundary
+    if (config.data instanceof FormData && config.headers) {
+      delete config.headers['Content-Type'];
+    }
+    
     return config;
   },
   (error) => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, FolderKanban, DollarSign, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, FolderKanban, DollarSign, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
 import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
@@ -7,28 +8,55 @@ import { consultationService, Consultation } from '../services/consultation.serv
 import { projectService, Project } from '../services/project.service';
 
 interface DashboardPageProps {
-  onNavigate: (path: string) => void;
+  userRole?: 'client' | 'company' | 'admin' | null;
 }
 
-export function DashboardPage({ onNavigate }: DashboardPageProps) {
+export function DashboardPage({ userRole }: DashboardPageProps) {
+  const navigate = useNavigate();
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [companyProfileError, setCompanyProfileError] = useState(false);
   
   useEffect(() => {
     loadData();
-  }, []);
+  }, [userRole]);
   
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [consultationsData, projectsData] = await Promise.all([
-        consultationService.list({ per_page: 10 }),
-        projectService.list({ per_page: 10 }),
-      ]);
+      setCompanyProfileError(false);
       
-      setConsultations(consultationsData.consultations);
-      setProjects(projectsData.projects);
+      // Use role-specific endpoints
+      if (userRole === 'company') {
+        try {
+          const [consultationsData, projectsData] = await Promise.all([
+            consultationService.listForCompany({ per_page: 10 }),
+            projectService.listForCompany({ per_page: 10 }),
+          ]);
+          
+          setConsultations(consultationsData.consultations);
+          setProjects(projectsData.projects);
+        } catch (error: any) {
+          // Check if it's a company profile not found error
+          if (error.response?.status === 404 && error.response?.data?.message?.includes('Company profile not found')) {
+            setCompanyProfileError(true);
+          } else {
+            throw error;
+          }
+        }
+      } else if (userRole === 'client') {
+        const [consultationsData, projectsData] = await Promise.all([
+          consultationService.list({ per_page: 10 }),
+          projectService.list({ per_page: 10 }),
+        ]);
+        
+        setConsultations(consultationsData.consultations);
+        setProjects(projectsData.projects);
+      } else {
+        // Admin or unknown role - skip loading for now
+        setIsLoading(false);
+      }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -139,6 +167,31 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     },
   ];
   
+  // Show company profile error message
+  if (companyProfileError) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-[#334155] mb-2">Dashboard</h1>
+        </div>
+        <Card>
+          <CardContent className="p-8">
+            <div className="text-center">
+              <AlertCircle className="w-16 h-16 text-[#F59E0B] mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-[#334155] mb-2">Company Profile Required</h2>
+              <p className="text-sm text-[#64748B] mb-6">
+                You need to create your company profile before you can access consultations and projects.
+              </p>
+              <Button onClick={() => navigate('/settings')} className="bg-[#1E3A8A] text-white">
+                Go to Settings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-8">
@@ -190,7 +243,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onNavigate('/consultations')}
+                onClick={() => navigate('/consultations')}
               >
                 View All
               </Button>
@@ -201,7 +254,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               {recentConsultations.map((consultation) => (
                 <div
                   key={consultation.id}
-                  onClick={() => onNavigate(`/consultations/${consultation.id}`)}
+                  onClick={() => navigate(`/consultations/${consultation.id}`)}
                   className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-lg hover:bg-[#E5E7EB] cursor-pointer transition-colors"
                 >
                   <div>
@@ -217,7 +270,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               {recentConsultations.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-sm text-[#64748B] mb-4">No upcoming consultations</p>
-                  <Button onClick={() => onNavigate('/consultations')}>
+                  <Button onClick={() => navigate('/consultations')}>
                     Book Consultation
                   </Button>
                 </div>
@@ -234,7 +287,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onNavigate('/projects')}
+                onClick={() => navigate('/projects')}
               >
                 View All
               </Button>
@@ -247,7 +300,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 return (
                   <div
                     key={project.id}
-                    onClick={() => onNavigate(`/projects/${project.id}`)}
+                    onClick={() => navigate(`/projects/${project.id}`)}
                     className="p-4 bg-[#F8FAFC] rounded-lg hover:bg-[#E5E7EB] cursor-pointer transition-colors"
                   >
                     <div className="flex items-start justify-between mb-3">
@@ -307,7 +360,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                   </div>
                   <Button
                     size="sm"
-                    onClick={() => onNavigate(`/projects/${action.projectId}#milestone-${action.milestoneId}`)}
+                    onClick={() => navigate(`/projects/${action.projectId}#milestone-${action.milestoneId}`)}
                   >
                     Review
                   </Button>

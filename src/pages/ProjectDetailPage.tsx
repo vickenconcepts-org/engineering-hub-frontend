@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ArrowLeft, Building2, DollarSign, Calendar, MapPin, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
@@ -9,27 +10,33 @@ import { milestoneService } from '../services/milestone.service';
 import { Milestone } from '../services/project.service';
 
 interface ProjectDetailPageProps {
-  onNavigate: (path: string) => void;
+  userRole?: 'client' | 'company' | 'admin' | null;
 }
 
-export function ProjectDetailPage({ onNavigate }: ProjectDetailPageProps) {
+export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const projectId = parseInt(id || '0');
   const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'escrow'>('overview');
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Extract project ID from current path
-  const projectId = parseInt(window.location.pathname.split('/projects/')[1]?.split('#')[0] || '0');
   
   useEffect(() => {
     if (projectId) {
       loadProject();
     }
-  }, [projectId]);
+  }, [projectId, userRole]);
   
   const loadProject = async () => {
     try {
       setIsLoading(true);
-      const fetchedProject = await projectService.get(projectId);
+      // Use role-specific endpoints
+      let fetchedProject: Project;
+      if (userRole === 'company') {
+        fetchedProject = await projectService.getForCompany(projectId);
+      } else {
+        fetchedProject = await projectService.get(projectId);
+      }
       setProject(fetchedProject);
     } catch (error) {
       console.error('Failed to load project:', error);
@@ -125,7 +132,7 @@ export function ProjectDetailPage({ onNavigate }: ProjectDetailPageProps) {
     return (
       <div className="space-y-6">
         <button
-          onClick={() => onNavigate('/projects')}
+          onClick={() => navigate('/projects')}
           className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -143,7 +150,7 @@ export function ProjectDetailPage({ onNavigate }: ProjectDetailPageProps) {
     return (
       <div className="space-y-6">
         <button
-          onClick={() => onNavigate('/projects')}
+          onClick={() => navigate('/projects')}
           className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -167,7 +174,7 @@ export function ProjectDetailPage({ onNavigate }: ProjectDetailPageProps) {
     <div className="space-y-6">
       {/* Back Button */}
       <button
-        onClick={() => onNavigate('/projects')}
+        onClick={() => navigate('/projects')}
         className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -235,12 +242,12 @@ export function ProjectDetailPage({ onNavigate }: ProjectDetailPageProps) {
               <CardContent>
                 <div className="space-y-4">
                   {project.description && (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                        Description
-                      </p>
-                      <p className="text-sm text-[#334155]">{project.description}</p>
-                    </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                      Description
+                    </p>
+                    <p className="text-sm text-[#334155]">{project.description}</p>
+                  </div>
                   )}
                   
                   <div className="grid md:grid-cols-2 gap-4">
@@ -299,34 +306,34 @@ export function ProjectDetailPage({ onNavigate }: ProjectDetailPageProps) {
                   
                   {project.company?.user && (
                     <>
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                          Contact Person
-                        </p>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                      Contact Person
+                    </p>
                         <p className="text-sm text-[#334155]">{project.company.user.name}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                          Email
-                        </p>
-                        <a
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                      Email
+                    </p>
+                    <a
                           href={`mailto:${project.company.user.email}`}
-                          className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8]"
-                        >
+                      className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8]"
+                    >
                           {project.company.user.email}
-                        </a>
-                      </div>
+                    </a>
+                  </div>
                     </>
                   )}
                   
                   {project.company?.registration_number && (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
                         Registration Number
-                      </p>
+                    </p>
                       <p className="text-sm text-[#334155]">{project.company.registration_number}</p>
-                    </div>
+                  </div>
                   )}
                 </div>
               </CardContent>
@@ -337,7 +344,21 @@ export function ProjectDetailPage({ onNavigate }: ProjectDetailPageProps) {
       
       {activeTab === 'milestones' && (
         <div className="space-y-4">
-          {milestones.length === 0 ? (
+          {/* Company: Create Milestones for Draft Projects */}
+          {userRole === 'company' && project?.status === 'draft' && milestones.length === 0 && (
+            <Card>
+              <CardContent>
+                <div className="text-center py-12">
+                  <p className="text-sm text-[#64748B] mb-4">No milestones yet. Create milestones to activate this project.</p>
+                  <Button onClick={() => navigate(`/projects/${projectId}/create-milestones`)}>
+                    Create Milestones
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {milestones.length === 0 && !(userRole === 'company' && project?.status === 'draft') ? (
             <Card>
               <CardContent>
                 <div className="text-center py-12">
@@ -345,11 +366,11 @@ export function ProjectDetailPage({ onNavigate }: ProjectDetailPageProps) {
                 </div>
               </CardContent>
             </Card>
-          ) : (
+          ) : milestones.length > 0 ? (
             milestones.map((milestone) => (
               <Card
                 key={milestone.id}
-                onClick={() => onNavigate(`/milestones/${milestone.id}`)}
+                onClick={() => navigate(`/milestones/${milestone.id}`)}
                 className="cursor-pointer hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between">
@@ -402,7 +423,7 @@ export function ProjectDetailPage({ onNavigate }: ProjectDetailPageProps) {
                 </div>
               </Card>
             ))
-          )}
+          ) : null}
         </div>
       )}
       
@@ -440,17 +461,17 @@ export function ProjectDetailPage({ onNavigate }: ProjectDetailPageProps) {
                 </div>
                 
                 {escrowTotals.funded > 0 && (
-                  <div className="pt-4 border-t border-[#E5E7EB]">
-                    <div className="w-full h-3 bg-[#E5E7EB] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#16A34A] rounded-full"
+                <div className="pt-4 border-t border-[#E5E7EB]">
+                  <div className="w-full h-3 bg-[#E5E7EB] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#16A34A] rounded-full"
                         style={{ width: `${(escrowTotals.released / escrowTotals.funded) * 100}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-[#64748B] mt-2">
-                      {((escrowTotals.released / escrowTotals.funded) * 100).toFixed(0)}% of funds released
-                    </p>
+                    />
                   </div>
+                  <p className="text-xs text-[#64748B] mt-2">
+                      {((escrowTotals.released / escrowTotals.funded) * 100).toFixed(0)}% of funds released
+                  </p>
+                </div>
                 )}
               </div>
             </CardContent>

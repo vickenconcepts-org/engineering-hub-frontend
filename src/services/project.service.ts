@@ -46,6 +46,11 @@ export interface Project {
   budget_max?: number;
   status: 'draft' | 'active' | 'completed' | 'disputed' | 'cancelled';
   company?: Company;
+  client?: {
+    id: number;
+    name: string;
+    email: string;
+  };
   milestones?: Milestone[];
   disputes?: Array<{
     id: number;
@@ -73,7 +78,7 @@ export interface CreateProjectData {
 
 /**
  * Project Service
- * Handles all project-related API calls for clients
+ * Handles all project-related API calls for clients and companies
  */
 export const projectService = {
   /**
@@ -94,7 +99,24 @@ export const projectService = {
   },
 
   /**
-   * Get a specific project by ID
+   * List company's projects with pagination
+   */
+  async listForCompany(params?: { per_page?: number }): Promise<{ projects: Project[]; meta: PaginationMeta }> {
+    const response = await apiClient.get<ApiResponse<Project[]>>('/company/projects', {
+      params,
+    });
+    
+    const projects = extractData<Project[]>(response);
+    const meta = extractMeta(response) as PaginationMeta;
+    
+    return {
+      projects,
+      meta,
+    };
+  },
+
+  /**
+   * Get a specific project by ID (client)
    */
   async get(id: number): Promise<Project> {
     const response = await apiClient.get<ApiResponse<Project>>(`/client/projects/${id}`);
@@ -102,10 +124,34 @@ export const projectService = {
   },
 
   /**
-   * Create a new project from a completed consultation
+   * Get a specific project by ID (company)
+   */
+  async getForCompany(id: number): Promise<Project> {
+    const response = await apiClient.get<ApiResponse<Project>>(`/company/projects/${id}`);
+    return extractData<Project>(response);
+  },
+
+  /**
+   * Create a new project from a completed consultation (client only)
    */
   async create(data: CreateProjectData): Promise<Project> {
     const response = await apiClient.post<ApiResponse<Project>>('/client/projects', data);
+    return extractData<Project>(response);
+  },
+
+  /**
+   * Create milestones for a project (company only)
+   */
+  async createMilestones(projectId: number, milestones: Array<{
+    title: string;
+    description?: string;
+    amount: number;
+    sequence_order: number;
+  }>): Promise<Project> {
+    const response = await apiClient.post<ApiResponse<Project>>(
+      `/company/projects/${projectId}/milestones`,
+      { milestones }
+    );
     return extractData<Project>(response);
   },
 };

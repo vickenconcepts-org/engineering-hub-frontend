@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { authService } from '../services/auth.service';
+import toast from 'react-hot-toast';
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -24,20 +27,28 @@ interface AuthLayoutProps {
   children: React.ReactNode;
   userRole?: 'client' | 'company' | 'admin';
   userName?: string;
-  currentPath?: string;
-  onNavigate?: (path: string) => void;
-  onLogout?: () => void;
 }
 
 export function AuthLayout({ 
   children, 
   userRole = 'client',
   userName = 'User',
-  currentPath = '/dashboard',
-  onNavigate,
-  onLogout,
 }: AuthLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentPath = location.pathname;
+  
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      toast.success('Logged out successfully');
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      navigate('/login');
+    }
+  };
   
   const navItems: NavItem[] = [
     { label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" />, path: '/dashboard' },
@@ -76,7 +87,7 @@ export function AuthLayout({
               <p className="text-xs text-[#64748B] capitalize">{userRole}</p>
             </div>
             <button
-              onClick={onLogout}
+              onClick={handleLogout}
               className="text-[#64748B] hover:text-[#334155] transition-colors"
               title="Logout"
             >
@@ -97,9 +108,9 @@ export function AuthLayout({
             {navItems.map((item) => (
               <button
                 key={item.path}
-                onClick={() => onNavigate?.(item.path)}
+                onClick={() => navigate(item.path)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  currentPath === item.path
+                  currentPath === item.path || currentPath.startsWith(item.path + '/')
                     ? 'bg-[#1E3A8A] text-white'
                     : 'text-[#64748B] hover:bg-[#F8FAFC]'
                 }`}

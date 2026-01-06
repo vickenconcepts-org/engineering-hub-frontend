@@ -18,13 +18,21 @@ export interface RejectMilestoneData {
 }
 
 /**
+ * Upload Evidence data
+ */
+export interface UploadEvidenceData {
+  type: 'image' | 'video' | 'text';
+  file?: File;
+  description: string;
+}
+
+/**
  * Milestone Service
- * Handles all milestone-related API calls for clients
- * Focuses on escrow funding and approval/rejection
+ * Handles all milestone-related API calls for clients and companies
  */
 export const milestoneService = {
   /**
-   * Fund milestone escrow (deposit payment)
+   * Fund milestone escrow (deposit payment) - CLIENT ONLY
    * Returns payment URL to redirect user to payment gateway
    */
   async fundEscrow(id: number): Promise<MilestonePaymentInitResponse> {
@@ -35,7 +43,7 @@ export const milestoneService = {
   },
 
   /**
-   * Approve a milestone
+   * Approve a milestone - CLIENT ONLY
    * Client approves milestone completion, allowing admin to release escrow
    */
   async approve(id: number): Promise<Milestone> {
@@ -46,7 +54,7 @@ export const milestoneService = {
   },
 
   /**
-   * Reject a milestone
+   * Reject a milestone - CLIENT ONLY
    * Client rejects milestone, creating a dispute automatically
    */
   async reject(id: number, data: RejectMilestoneData): Promise<Milestone> {
@@ -55,6 +63,37 @@ export const milestoneService = {
       data
     );
     return extractData<Milestone>(response);
+  },
+
+  /**
+   * Submit milestone for approval - COMPANY ONLY
+   * Company submits completed milestone with evidence for client review
+   */
+  async submit(id: number): Promise<Milestone> {
+    const response = await apiClient.post<ApiResponse<Milestone>>(
+      `/company/milestones/${id}/submit`
+    );
+    return extractData<Milestone>(response);
+  },
+
+  /**
+   * Upload evidence for milestone - COMPANY ONLY
+   * Company uploads photos, videos, or text evidence of milestone completion
+   */
+  async uploadEvidence(id: number, data: UploadEvidenceData): Promise<any> {
+    const formData = new FormData();
+    formData.append('type', data.type);
+    formData.append('description', data.description);
+    
+    if (data.file) {
+      formData.append('file', data.file);
+    }
+
+    const response = await apiClient.post<ApiResponse<any>>(
+      `/company/milestones/${id}/evidence`,
+      formData
+    );
+    return extractData(response);
   },
 };
 

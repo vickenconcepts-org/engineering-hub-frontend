@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Search, Building2, MapPin, Calendar, Clock, DollarSign } from 'lucide-react';
 import { Card, CardContent } from '../components/Card';
@@ -11,10 +12,11 @@ import { companyService, Company } from '../services/company.service';
 import { consultationService, Consultation } from '../services/consultation.service';
 
 interface ConsultationsPageProps {
-  onNavigate: (path: string) => void;
+  userRole?: 'client' | 'company' | 'admin' | null;
 }
 
-export function ConsultationsPage({ onNavigate }: ConsultationsPageProps) {
+export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -34,9 +36,11 @@ export function ConsultationsPage({ onNavigate }: ConsultationsPageProps) {
   
   // Fetch companies and consultations on mount
   useEffect(() => {
-    loadCompanies();
+    if (userRole === 'client') {
+      loadCompanies();
+    }
     loadConsultations();
-  }, []);
+  }, [userRole]);
   
   const loadCompanies = async () => {
     try {
@@ -56,8 +60,14 @@ export function ConsultationsPage({ onNavigate }: ConsultationsPageProps) {
   const loadConsultations = async () => {
     try {
       setIsLoadingConsultations(true);
-      const { consultations: fetchedConsultations } = await consultationService.list();
-      setConsultations(fetchedConsultations);
+      // Use role-specific endpoints
+      if (userRole === 'company') {
+        const { consultations: fetchedConsultations } = await consultationService.listForCompany();
+        setConsultations(fetchedConsultations);
+      } else if (userRole === 'client') {
+        const { consultations: fetchedConsultations } = await consultationService.list();
+        setConsultations(fetchedConsultations);
+      }
     } catch (error) {
       console.error('Failed to load consultations:', error);
     } finally {
@@ -161,14 +171,18 @@ export function ConsultationsPage({ onNavigate }: ConsultationsPageProps) {
       <div>
         <h1 className="text-2xl font-semibold text-[#334155] mb-2">Consultations</h1>
         <p className="text-sm text-[#64748B]">
-          Browse verified construction companies and manage your consultations.
+          {userRole === 'company' 
+            ? 'Manage your consultation bookings and meetings.'
+            : 'Browse verified construction companies and manage your consultations.'}
         </p>
       </div>
       
       {/* My Consultations Section */}
       {consultations.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-[#334155]">My Consultations</h2>
+          <h2 className="text-lg font-semibold text-[#334155]">
+            {userRole === 'company' ? 'Consultation Requests' : 'My Consultations'}
+          </h2>
           <div className="grid gap-4">
             {consultations.map((consultation) => (
               <Card key={consultation.id}>
@@ -176,7 +190,9 @@ export function ConsultationsPage({ onNavigate }: ConsultationsPageProps) {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-medium text-[#334155]">
-                        {consultation.company?.company_name || 'Company'}
+                        {userRole === 'company' 
+                          ? (consultation.client?.name || 'Client')
+                          : (consultation.company?.company_name || 'Company')}
                       </h3>
                       <StatusBadge status={consultation.status} color={getStatusColor(consultation.status)} />
                       <StatusBadge 
@@ -202,7 +218,7 @@ export function ConsultationsPage({ onNavigate }: ConsultationsPageProps) {
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => onNavigate(`/consultations/${consultation.id}`)}
+                      onClick={() => navigate(`/consultations/${consultation.id}`)}
                     >
                       View Details
                     </Button>
@@ -228,7 +244,8 @@ export function ConsultationsPage({ onNavigate }: ConsultationsPageProps) {
         </div>
       )}
       
-      {/* Browse Companies Section */}
+      {/* Browse Companies Section - Only for clients */}
+      {userRole === 'client' && (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-[#334155]">Browse Verified Companies</h2>
@@ -342,6 +359,7 @@ export function ConsultationsPage({ onNavigate }: ConsultationsPageProps) {
           </div>
         )}
       </div>
+      )}
       
       {/* Booking Modal */}
       <Modal
