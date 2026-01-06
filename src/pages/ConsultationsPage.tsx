@@ -1,0 +1,429 @@
+import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
+import { Search, Building2, MapPin, Calendar, Clock, DollarSign } from 'lucide-react';
+import { Card, CardContent } from '../components/Card';
+import { Button } from '../components/Button';
+import { Input } from '../components/Input';
+import { Select } from '../components/Select';
+import { Modal } from '../components/Modal';
+import { StatusBadge } from '../components/StatusBadge';
+import { companyService, Company } from '../services/company.service';
+import { consultationService, Consultation } from '../services/consultation.service';
+
+interface ConsultationsPageProps {
+  onNavigate: (path: string) => void;
+}
+
+export function ConsultationsPage({ onNavigate }: ConsultationsPageProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
+  const [isLoadingConsultations, setIsLoadingConsultations] = useState(true);
+  const [isBooking, setIsBooking] = useState(false);
+  
+  // Booking form state
+  const [bookingForm, setBookingForm] = useState({
+    scheduledDate: '',
+    scheduledTime: '',
+    durationMinutes: 30,
+    price: 25000, // Default price in NGN
+  });
+  
+  // Fetch companies and consultations on mount
+  useEffect(() => {
+    loadCompanies();
+    loadConsultations();
+  }, []);
+  
+  const loadCompanies = async () => {
+    try {
+      setIsLoadingCompanies(true);
+      const { companies: fetchedCompanies } = await companyService.listVerified({
+        per_page: 20,
+        ...(searchQuery && { search: searchQuery }),
+      });
+      setCompanies(fetchedCompanies);
+    } catch (error) {
+      console.error('Failed to load companies:', error);
+    } finally {
+      setIsLoadingCompanies(false);
+    }
+  };
+  
+  const loadConsultations = async () => {
+    try {
+      setIsLoadingConsultations(true);
+      const { consultations: fetchedConsultations } = await consultationService.list();
+      setConsultations(fetchedConsultations);
+    } catch (error) {
+      console.error('Failed to load consultations:', error);
+    } finally {
+      setIsLoadingConsultations(false);
+    }
+  };
+  
+  const handleBookConsultation = (company: Company) => {
+    setSelectedCompany(company);
+    setBookingForm({
+      scheduledDate: '',
+      scheduledTime: '',
+      durationMinutes: 30,
+      price: 25000, // Default consultation fee
+    });
+    setBookingModalOpen(true);
+  };
+  
+  const handleConfirmBooking = async () => {
+    if (!selectedCompany) return;
+    
+    if (!bookingForm.scheduledDate || !bookingForm.scheduledTime) {
+      toast.error('Please select date and time for consultation');
+      return;
+    }
+    
+    setIsBooking(true);
+    
+    try {
+      // Combine date and time into ISO datetime string
+      const scheduledAt = new Date(`${bookingForm.scheduledDate}T${bookingForm.scheduledTime}`).toISOString();
+      
+      // Create consultation
+      const consultation = await consultationService.create({
+        company_id: selectedCompany.id,
+        scheduled_at: scheduledAt,
+        duration_minutes: bookingForm.durationMinutes,
+        price: bookingForm.price,
+      });
+      
+      toast.success('Consultation booked successfully!');
+      setBookingModalOpen(false);
+      
+      // Initialize payment
+      const payment = await consultationService.pay(consultation.id);
+      
+      // Redirect to payment URL
+      window.location.href = payment.payment_url;
+    } catch (error) {
+      console.error('Booking error:', error);
+      // Error already handled by API client interceptor
+    } finally {
+      setIsBooking(false);
+    }
+  };
+  
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+  
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'scheduled':
+        return 'blue';
+      case 'completed':
+        return 'green';
+      case 'cancelled':
+        return 'red';
+      default:
+        return 'gray';
+    }
+  };
+  
+  const getPaymentStatusColor = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return 'green';
+      case 'pending':
+        return 'yellow';
+      case 'refunded':
+        return 'red';
+      default:
+        return 'gray';
+    }
+  };
+  
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-[#334155] mb-2">Consultations</h1>
+        <p className="text-sm text-[#64748B]">
+          Browse verified construction companies and manage your consultations.
+        </p>
+      </div>
+      
+      {/* My Consultations Section */}
+      {consultations.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-[#334155]">My Consultations</h2>
+          <div className="grid gap-4">
+            {consultations.map((consultation) => (
+              <Card key={consultation.id}>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-medium text-[#334155]">
+                        {consultation.company?.company_name || 'Company'}
+                      </h3>
+                      <StatusBadge status={consultation.status} color={getStatusColor(consultation.status)} />
+                      <StatusBadge 
+                        status={consultation.payment_status} 
+                        color={getPaymentStatusColor(consultation.payment_status)} 
+                      />
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-[#64748B]">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        <span>{formatDate(consultation.scheduled_at)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{formatTime(consultation.scheduled_at)} ({consultation.duration_minutes} min)</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="w-4 h-4" />
+                        <span>₦{consultation.price.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => onNavigate(`/consultations/${consultation.id}`)}
+                    >
+                      View Details
+                    </Button>
+                    {!consultation.is_paid && (
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const payment = await consultationService.pay(consultation.id);
+                            window.location.href = payment.payment_url;
+                          } catch (error) {
+                            console.error('Payment error:', error);
+                          }
+                        }}
+                      >
+                        Pay Now
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Browse Companies Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-[#334155]">Browse Verified Companies</h2>
+          <Button
+            variant="outline"
+            onClick={loadCompanies}
+            disabled={isLoadingCompanies}
+          >
+            Refresh
+          </Button>
+        </div>
+        
+        {/* Search */}
+        <Card>
+          <CardContent>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#64748B]" />
+              <input
+                type="text"
+                placeholder="Search companies..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    loadCompanies();
+                  }
+                }}
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none text-sm"
+              />
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Companies List */}
+        {isLoadingCompanies ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
+            <p className="text-sm text-[#64748B]">Loading companies...</p>
+          </div>
+        ) : companies.length === 0 ? (
+          <Card>
+            <CardContent>
+              <div className="text-center py-12">
+                <Building2 className="w-12 h-12 text-[#64748B] mx-auto mb-4" />
+                <p className="text-sm text-[#64748B]">No verified companies found.</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6">
+            {companies.map((company) => (
+              <Card key={company.id}>
+                <div className="flex flex-col md:flex-row gap-6">
+                  {/* Company Info */}
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-medium text-[#334155]">
+                            {company.company_name}
+                          </h3>
+                          {company.is_verified && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#DBEAFE] text-[#1E40AF]">
+                              Verified
+                            </span>
+                          )}
+                        </div>
+                        {company.specialization && company.specialization.length > 0 && (
+                          <p className="text-sm text-[#64748B]">
+                            {company.specialization.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {company.registration_number && (
+                      <p className="text-sm text-[#64748B] mb-4">
+                        Registration: {company.registration_number}
+                      </p>
+                    )}
+                    
+                    {company.portfolio_links && company.portfolio_links.length > 0 && (
+                      <div className="flex items-center gap-2 text-sm text-[#64748B] mb-4">
+                        <Building2 className="w-4 h-4" />
+                        <span>Portfolio Available</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Booking Section */}
+                  <div className="md:w-64 flex flex-col justify-between md:border-l md:border-[#E5E7EB] md:pl-6">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                        Consultation Fee
+                      </p>
+                      <p className="text-2xl font-semibold text-[#334155] mb-4">
+                        ₦25,000
+                      </p>
+                    </div>
+                    
+                    <Button
+                      fullWidth
+                      onClick={() => handleBookConsultation(company)}
+                    >
+                      Book Consultation
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {/* Booking Modal */}
+      <Modal
+        isOpen={bookingModalOpen}
+        onClose={() => !isBooking && setBookingModalOpen(false)}
+        title="Book Consultation"
+        primaryAction={{
+          label: isBooking ? 'Processing...' : 'Confirm & Pay',
+          onClick: handleConfirmBooking,
+          disabled: isBooking,
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: () => setBookingModalOpen(false),
+          disabled: isBooking,
+        }}
+      >
+        <div className="space-y-4">
+          {selectedCompany && (
+            <p className="text-sm text-[#64748B]">
+              You're about to book a consultation with{' '}
+              <strong className="text-[#334155]">
+                {selectedCompany.company_name}
+              </strong>
+            </p>
+          )}
+          
+          <Input
+            label="Preferred Date"
+            type="date"
+            value={bookingForm.scheduledDate}
+            onChange={(e) => setBookingForm({ ...bookingForm, scheduledDate: e.target.value })}
+            min={new Date().toISOString().split('T')[0]}
+            required
+          />
+          
+          <Input
+            label="Preferred Time"
+            type="time"
+            value={bookingForm.scheduledTime}
+            onChange={(e) => setBookingForm({ ...bookingForm, scheduledTime: e.target.value })}
+            required
+          />
+          
+          <Select
+            label="Duration"
+            options={[
+              { value: '15', label: '15 minutes' },
+              { value: '30', label: '30 minutes' },
+              { value: '45', label: '45 minutes' },
+              { value: '60', label: '60 minutes' },
+            ]}
+            value={bookingForm.durationMinutes.toString()}
+            onChange={(e) => setBookingForm({ ...bookingForm, durationMinutes: parseInt(e.target.value) })}
+            required
+          />
+          
+          <Input
+            label="Consultation Fee (NGN)"
+            type="number"
+            value={bookingForm.price}
+            onChange={(e) => setBookingForm({ ...bookingForm, price: parseFloat(e.target.value) || 0 })}
+            min={0}
+            required
+          />
+          
+          <div className="pt-4 border-t border-[#E5E7EB]">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-[#64748B]">Consultation Fee</span>
+              <span className="font-medium text-[#334155]">
+                ₦{bookingForm.price.toLocaleString()}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-[#334155]">Total</span>
+              <span className="text-lg font-semibold text-[#334155]">
+                ₦{bookingForm.price.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
