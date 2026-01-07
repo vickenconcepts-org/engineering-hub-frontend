@@ -74,9 +74,11 @@ apiClient.interceptors.response.use(
     // Handle 401 Unauthorized - Clear token and redirect to login
     if (status === 401) {
       Cookies.remove(TOKEN_COOKIE_NAME);
-      toast.error(data?.message || 'Session expired. Please login again.');
+      // Don't show toast for 401 - redirect will happen
       // Redirect to login will be handled by App.tsx
-      window.location.href = '/login';
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 100);
       return Promise.reject(error);
     }
 

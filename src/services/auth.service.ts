@@ -5,7 +5,7 @@ import { setAuthToken, removeAuthToken } from '../lib/cookies';
  * User interface matching backend User model
  */
 export interface User {
-  id: number;
+  id: string; // UUID
   name: string;
   email: string;
   phone?: string;

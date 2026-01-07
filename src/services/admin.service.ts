@@ -1,5 +1,5 @@
 import apiClient, { extractData, extractMeta, ApiResponse } from '../lib/api-client';
-import { Company } from './auth.service';
+import { Company } from './consultation.service';
 
 /**
  * Admin Service
@@ -11,7 +11,7 @@ import { Company } from './auth.service';
  */
 export interface AdminCompany extends Company {
   user?: {
-    id: number;
+    id: string; // UUID
     name: string;
     email: string;
     phone?: string;
@@ -24,26 +24,32 @@ export interface AdminCompany extends Company {
  * Dispute interface
  */
 export interface Dispute {
-  id: number;
-  project_id: number;
-  milestone_id?: number;
-  raised_by: number;
+  id: string; // UUID
+  project_id: string; // UUID
+  milestone_id?: string; // UUID
+  type: 'revision_request' | 'dispute';
+  raised_by: string; // UUID
   reason: string;
   status: 'open' | 'resolved' | 'escalated';
   resolution_notes?: string;
   project?: {
-    id: number;
+    id: string; // UUID
     title: string;
-    client_id: number;
-    company_id: number;
+    client_id: string; // UUID
+    company_id: string; // UUID
   };
   milestone?: {
-    id: number;
+    id: string; // UUID
     title: string;
     amount: number;
   };
   raised_by_user?: {
-    id: number;
+    id: string; // UUID
+    name: string;
+    email: string;
+  };
+  raised_by?: {
+    id: string; // UUID
     name: string;
     email: string;
   };
@@ -55,21 +61,21 @@ export interface Dispute {
  * Milestone for escrow release
  */
 export interface MilestoneForRelease {
-  id: number;
-  project_id: number;
+  id: string; // UUID
+  project_id: string; // UUID
   title: string;
   amount: number;
   status: string;
   escrow?: {
-    id: number;
+    id: string; // UUID
     amount: number;
     status: string;
     payment_reference: string;
   };
   project?: {
-    id: number;
+    id: string; // UUID
     title: string;
-    company_id: number;
+    company_id: string; // UUID
   };
 }
 
@@ -126,7 +132,7 @@ export const adminService = {
   /**
    * Get company details
    */
-  async getCompany(id: number): Promise<AdminCompany> {
+  async getCompany(id: string): Promise<AdminCompany> {
     const response = await apiClient.get<ApiResponse<AdminCompany>>(`/admin/companies/${id}`);
     return extractData<AdminCompany>(response);
   },
@@ -134,7 +140,7 @@ export const adminService = {
   /**
    * Approve company
    */
-  async approveCompany(id: number): Promise<AdminCompany> {
+  async approveCompany(id: string): Promise<AdminCompany> {
     const response = await apiClient.post<ApiResponse<AdminCompany>>(`/admin/companies/${id}/approve`);
     return extractData<AdminCompany>(response);
   },
@@ -142,7 +148,7 @@ export const adminService = {
   /**
    * Reject company
    */
-  async rejectCompany(id: number, reason: string): Promise<AdminCompany> {
+  async rejectCompany(id: string, reason: string): Promise<AdminCompany> {
     const response = await apiClient.post<ApiResponse<AdminCompany>>(`/admin/companies/${id}/reject`, {
       reason,
     });
@@ -152,7 +158,7 @@ export const adminService = {
   /**
    * Suspend company
    */
-  async suspendCompany(id: number, reason: string): Promise<AdminCompany> {
+  async suspendCompany(id: string, reason: string): Promise<AdminCompany> {
     const response = await apiClient.post<ApiResponse<AdminCompany>>(`/admin/companies/${id}/suspend`, {
       reason,
     });
@@ -164,7 +170,7 @@ export const adminService = {
    */
   async listDisputes(params?: {
     status?: 'open' | 'resolved' | 'escalated';
-    project_id?: number;
+    project_id?: string; // UUID
     per_page?: number;
   }): Promise<{ disputes: Dispute[]; meta: PaginationMeta }> {
     const response = await apiClient.get<ApiResponse<Dispute[]>>('/admin/disputes', {
@@ -179,7 +185,7 @@ export const adminService = {
   /**
    * Get dispute details
    */
-  async getDispute(id: number): Promise<Dispute> {
+  async getDispute(id: string): Promise<Dispute> {
     const response = await apiClient.get<ApiResponse<Dispute>>(`/admin/disputes/${id}`);
     return extractData<Dispute>(response);
   },
@@ -187,15 +193,51 @@ export const adminService = {
   /**
    * Resolve dispute
    */
-  async resolveDispute(id: number, data: ResolveDisputeData): Promise<Dispute> {
+  async resolveDispute(id: string, data: ResolveDisputeData): Promise<Dispute> {
     const response = await apiClient.post<ApiResponse<Dispute>>(`/admin/disputes/${id}/resolve`, data);
     return extractData<Dispute>(response);
   },
 
   /**
+   * List milestones with escrow funds
+   */
+  async listEscrowMilestones(params?: {
+    per_page?: number;
+    page?: number;
+    status?: 'held' | 'released' | 'all';
+  }): Promise<{ milestones: MilestoneForRelease[]; meta: PaginationMeta }> {
+    const response = await apiClient.get<ApiResponse<any>>('/admin/milestones', { params });
+    
+    // extractData gets the 'data' field from response, which contains the array of milestones
+    const milestonesData = extractData<any>(response);
+    const meta = extractMeta(response) as PaginationMeta;
+    
+    // Handle different response structures
+    let milestones: MilestoneForRelease[] = [];
+    
+    if (Array.isArray(milestonesData)) {
+      milestones = milestonesData;
+    } else if (milestonesData && typeof milestonesData === 'object' && 'data' in milestonesData) {
+      milestones = Array.isArray(milestonesData.data) ? milestonesData.data : [];
+    }
+    
+    return {
+      milestones,
+      meta: meta || {
+        current_page: 1,
+        per_page: params?.per_page || 15,
+        total: 0,
+        last_page: 1,
+        from: 0,
+        to: 0,
+      },
+    };
+  },
+
+  /**
    * Release escrow funds
    */
-  async releaseEscrow(id: number, data: ReleaseEscrowData): Promise<any> {
+  async releaseEscrow(id: string, data: ReleaseEscrowData): Promise<any> {
     const response = await apiClient.post<ApiResponse<any>>(`/admin/milestones/${id}/release`, data);
     return extractData(response);
   },

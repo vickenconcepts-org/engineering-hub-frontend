@@ -5,24 +5,24 @@ import { Company, PaginationMeta } from './consultation.service';
  * Milestone interface
  */
 export interface Milestone {
-  id: number;
-  project_id: number;
+  id: string; // UUID
+  project_id: string; // UUID
   title: string;
   description?: string;
   amount: number;
   sequence_order: number;
   status: 'pending' | 'funded' | 'submitted' | 'approved' | 'rejected' | 'released';
   escrow?: {
-    id: number;
-    milestone_id: number;
+    id: string; // UUID
+    milestone_id: string; // UUID
     amount: number;
     status: 'held' | 'released' | 'refunded';
     created_at: string;
     released_at?: string;
   };
   evidence?: Array<{
-    id: number;
-    milestone_id: number;
+    id: string; // UUID
+    milestone_id: string; // UUID
     type: 'image' | 'video' | 'text';
     file_path?: string;
     description?: string;
@@ -36,9 +36,9 @@ export interface Milestone {
  * Project interface matching backend Project model
  */
 export interface Project {
-  id: number;
-  client_id: number;
-  company_id: number;
+  id: string; // UUID
+  client_id: string; // UUID
+  company_id: string; // UUID
   title: string;
   description?: string;
   location: string;
@@ -47,15 +47,15 @@ export interface Project {
   status: 'draft' | 'active' | 'completed' | 'disputed' | 'cancelled';
   company?: Company;
   client?: {
-    id: number;
+    id: string; // UUID
     name: string;
     email: string;
   };
   milestones?: Milestone[];
   disputes?: Array<{
-    id: number;
-    milestone_id?: number;
-    raised_by: number;
+    id: string; // UUID
+    milestone_id?: string; // UUID
+    raised_by: string; // UUID
     reason: string;
     status: 'open' | 'resolved' | 'escalated';
     created_at: string;
@@ -68,7 +68,7 @@ export interface Project {
  * Create project request data
  */
 export interface CreateProjectData {
-  consultation_id: number;
+  consultation_id: string; // UUID
   title: string;
   description?: string;
   location: string;
@@ -118,7 +118,7 @@ export const projectService = {
   /**
    * Get a specific project by ID (client)
    */
-  async get(id: number): Promise<Project> {
+  async get(id: string): Promise<Project> {
     const response = await apiClient.get<ApiResponse<Project>>(`/client/projects/${id}`);
     return extractData<Project>(response);
   },
@@ -126,8 +126,17 @@ export const projectService = {
   /**
    * Get a specific project by ID (company)
    */
-  async getForCompany(id: number): Promise<Project> {
+  async getForCompany(id: string): Promise<Project> {
     const response = await apiClient.get<ApiResponse<Project>>(`/company/projects/${id}`);
+    return extractData<Project>(response);
+  },
+
+  /**
+   * Get a specific project by ID (admin or shared endpoint)
+   * Uses the shared /api/projects/{id} endpoint which allows admins
+   */
+  async getShared(id: string): Promise<Project> {
+    const response = await apiClient.get<ApiResponse<Project>>(`/projects/${id}`);
     return extractData<Project>(response);
   },
 
@@ -142,7 +151,7 @@ export const projectService = {
   /**
    * Create milestones for a project (company only)
    */
-  async createMilestones(projectId: number, milestones: Array<{
+  async createMilestones(projectId: string, milestones: Array<{
     title: string;
     description?: string;
     amount: number;

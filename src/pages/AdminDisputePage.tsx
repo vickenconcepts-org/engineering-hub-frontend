@@ -22,7 +22,7 @@ export function AdminDisputePage({ onNavigate }: AdminDisputePageProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   
   // Extract dispute ID from current path
-  const disputeId = parseInt(window.location.pathname.split('/admin/disputes/')[1]?.split('#')[0] || '0');
+  const disputeId = window.location.pathname.split('/admin/disputes/')[1]?.split('#')[0] || '';
   
   useEffect(() => {
     if (disputeId) {

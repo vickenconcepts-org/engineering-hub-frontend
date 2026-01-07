@@ -79,7 +79,7 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
     return total + project.milestones.reduce((milestoneTotal, milestone) => {
       if (milestone.escrow && milestone.escrow.status === 'held') {
         return milestoneTotal + milestone.escrow.amount;
-      }
+}
       return milestoneTotal;
     }, 0);
   }, 0);
@@ -298,33 +298,33 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
               {activeProjectsList.map((project) => {
                 const progress = calculateProjectProgress(project);
                 return (
-                  <div
-                    key={project.id}
+                <div
+                  key={project.id}
                     onClick={() => navigate(`/projects/${project.id}`)}
-                    className="p-4 bg-[#F8FAFC] rounded-lg hover:bg-[#E5E7EB] cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="text-sm font-medium text-[#334155]">
+                  className="p-4 bg-[#F8FAFC] rounded-lg hover:bg-[#E5E7EB] cursor-pointer transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-sm font-medium text-[#334155]">
                           {project.title}
                         </p>
                         <p className="text-xs text-[#64748B] mt-1">
                           {project.company?.company_name || 'Company'}
-                        </p>
-                      </div>
-                      <StatusBadge status={project.status} />
+                      </p>
                     </div>
-                    
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-[#64748B]">Progress</span>
+                    <StatusBadge status={project.status} />
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-[#64748B]">Progress</span>
                         <span className="text-xs font-medium text-[#334155]">{progress}%</span>
-                      </div>
-                      <div className="w-full h-2 bg-[#E5E7EB] rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#16A34A] rounded-full"
+                    </div>
+                    <div className="w-full h-2 bg-[#E5E7EB] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#16A34A] rounded-full"
                           style={{ width: `${progress}%` }}
-                        />
+                      />
                       </div>
                     </div>
                   </div>

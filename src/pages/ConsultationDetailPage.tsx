@@ -5,16 +5,29 @@ import { Calendar, Clock, Video, FileText, ArrowLeft, DollarSign, CheckCircle } 
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
+import { Modal } from '../components/Modal';
+import { Input } from '../components/Input';
+import { Textarea } from '../components/Textarea';
 import { consultationService, Consultation } from '../services/consultation.service';
+import { projectService } from '../services/project.service';
 
 interface ConsultationDetailPageProps {
-  consultationId: number;
+  consultationId: string; // UUID
   userRole?: 'client' | 'company' | 'admin' | null;
 }
 
 export function ConsultationDetailPage({ consultationId, userRole }: ConsultationDetailPageProps) {
   const [consultation, setConsultation] = useState<Consultation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  const [projectForm, setProjectForm] = useState({
+    title: '',
+    description: '',
+    location: '',
+    budget_min: '',
+    budget_max: '',
+  });
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -34,6 +47,17 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
         fetchedConsultation = await consultationService.get(consultationId);
       }
       setConsultation(fetchedConsultation);
+      
+      // Debug: Log consultation data for company users
+      if (userRole === 'company') {
+        console.log('Consultation data for company:', {
+          status: fetchedConsultation.status,
+          is_paid: fetchedConsultation.is_paid,
+          payment_status: fetchedConsultation.payment_status,
+          is_completed: fetchedConsultation.is_completed,
+          userRole,
+        });
+      }
     } catch (error) {
       console.error('Failed to load consultation:', error);
       toast.error('Failed to load consultation details');
@@ -56,6 +80,41 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
       minute: '2-digit',
       timeZoneName: 'short',
     });
+  };
+  
+  const getStatusBadgeStatus = (status: string): 'pending' | 'approved' | 'rejected' | 'scheduled' | 'completed' | 'active' => {
+    switch (status?.toLowerCase()) {
+      case 'scheduled':
+        return 'scheduled';
+      case 'completed':
+        return 'completed';
+      case 'active':
+      case 'in_progress':
+        return 'active';
+      case 'pending':
+        return 'pending';
+      case 'approved':
+        return 'approved';
+      case 'rejected':
+      case 'cancelled':
+        return 'rejected';
+      default:
+        return 'pending';
+    }
+  };
+  
+  const getPaymentStatusBadgeStatus = (status: string): 'pending' | 'approved' | 'rejected' => {
+    switch (status?.toLowerCase()) {
+      case 'paid':
+        return 'approved';
+      case 'pending':
+      case 'unpaid':
+        return 'pending';
+      case 'refunded':
+        return 'rejected';
+      default:
+        return 'pending';
+    }
   };
   
   const handlePay = async () => {
@@ -112,7 +171,7 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
     <div className="space-y-6">
       {/* Back Button */}
       <button
-        onClick={() => onNavigate('/consultations')}
+        onClick={() => navigate('/consultations')}
         className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -130,10 +189,9 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
           </p>
         </div>
         <div className="flex gap-2">
-          <StatusBadge status={consultation.status} />
+          <StatusBadge status={getStatusBadgeStatus(consultation.status)} />
           <StatusBadge 
-            status={consultation.payment_status} 
-            color={consultation.is_paid ? 'green' : 'yellow'} 
+            status={getPaymentStatusBadgeStatus(consultation.payment_status)} 
           />
         </div>
       </div>
@@ -149,22 +207,22 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
             <CardContent>
               <div className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex items-start gap-3">
-                    <Calendar className="w-5 h-5 text-[#64748B] mt-0.5" />
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-5 h-5 text-[#64748B] mt-0.5" />
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
                         Scheduled Date
-                      </p>
+                    </p>
                       <p className="text-sm text-[#334155]">{formatDate(consultation.scheduled_at)}</p>
-                    </div>
                   </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <Clock className="w-5 h-5 text-[#64748B] mt-0.5" />
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-[#64748B] mt-0.5" />
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
                         Time & Duration
-                      </p>
+                    </p>
                       <p className="text-sm text-[#334155]">
                         {formatTime(consultation.scheduled_at)} ({consultation.duration_minutes} min)
                       </p>
@@ -188,8 +246,7 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                         Payment Status
                       </p>
                       <StatusBadge 
-                        status={consultation.payment_status} 
-                        color={consultation.is_paid ? 'green' : 'yellow'} 
+                        status={getPaymentStatusBadgeStatus(consultation.payment_status)} 
                       />
                     </div>
                   </div>
@@ -197,20 +254,20 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                 
                 {consultation.meeting_link && (
                   <div className="flex items-start gap-3 pt-4 border-t border-[#E5E7EB]">
-                    <Video className="w-5 h-5 text-[#64748B] mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-2">
-                        Meeting Link
-                      </p>
-                      <a
+                  <Video className="w-5 h-5 text-[#64748B] mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-2">
+                      Meeting Link
+                    </p>
+                    <a
                         href={consultation.meeting_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] underline break-all"
-                      >
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] underline break-all"
+                    >
                         {consultation.meeting_link}
-                      </a>
-                    </div>
+                    </a>
+                  </div>
                   </div>
                 )}
               </div>
@@ -227,7 +284,7 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                 </div>
               )}
               
-              {userRole === 'client' && consultation.status === 'scheduled' && !consultation.is_paid && (
+              {userRole === 'client' && consultation.status === 'scheduled' && !consultation.is_paid && consultation.payment_status !== 'paid' && (
                 <div className="mt-6 pt-6 border-t border-[#E5E7EB]">
                   <Button fullWidth onClick={handlePay}>
                     <DollarSign className="w-4 h-4 mr-2" />
@@ -235,8 +292,19 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                   </Button>
                 </div>
               )}
+              {userRole === 'client' && (consultation.is_paid || consultation.payment_status === 'paid') && (
+                <div className="mt-6 pt-6 border-t border-[#E5E7EB]">
+                  <div className="bg-[#D1FAE5] rounded-lg p-4 text-center">
+                    <p className="text-sm font-medium text-[#16A34A]">✓ Payment Completed</p>
+                  </div>
+                </div>
+              )}
               
-              {userRole === 'company' && consultation.status === 'scheduled' && consultation.is_paid && !consultation.is_completed && (
+              {userRole === 'company' && 
+               consultation.status === 'scheduled' && 
+               (consultation.is_paid || consultation.payment_status === 'paid') && 
+               consultation.status !== 'completed' && 
+               !consultation.is_completed && (
                 <div className="mt-6 pt-6 border-t border-[#E5E7EB]">
                   <Button 
                     fullWidth 
@@ -245,13 +313,26 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                         await consultationService.complete(consultation.id);
                         toast.success('Consultation marked as completed');
                         loadConsultation();
-                      } catch (error) {
+                      } catch (error: any) {
                         console.error('Failed to complete consultation:', error);
+                        toast.error(error.response?.data?.message || 'Failed to mark consultation as completed');
                       }
                     }}
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Mark as Completed
+                  </Button>
+                </div>
+              )}
+
+              {userRole === 'client' && consultation.status === 'completed' && (consultation.is_paid || consultation.payment_status === 'paid') && (
+                <div className="mt-6 pt-6 border-t border-[#E5E7EB]">
+                  <Button 
+                    fullWidth 
+                    onClick={() => setShowCreateProjectModal(true)}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Create Project from Consultation
                   </Button>
                 </div>
               )}
@@ -325,24 +406,24 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                 
                 {consultation.company?.user && (
                   <>
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                        Contact Person
-                      </p>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                    Contact Person
+                  </p>
                       <p className="text-sm text-[#334155]">{consultation.company.user.name}</p>
-                    </div>
-                    
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                        Email
-                      </p>
-                      <a
+                </div>
+                
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                    Email
+                  </p>
+                  <a
                         href={`mailto:${consultation.company.user.email}`}
-                        className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8]"
-                      >
+                    className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8]"
+                  >
                         {consultation.company.user.email}
-                      </a>
-                    </div>
+                  </a>
+                </div>
                   </>
                 )}
                 
@@ -356,14 +437,14 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                 )}
                 
                 {consultation.company?.specialization && consultation.company.specialization.length > 0 && (
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
                       Specialization
-                    </p>
+                  </p>
                     <p className="text-sm text-[#334155]">
                       {consultation.company.specialization.join(', ')}
                     </p>
-                  </div>
+                </div>
                 )}
               </div>
             </CardContent>
@@ -382,20 +463,29 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                     ₦{consultation.price.toLocaleString()}
                   </span>
                 </div>
+                <p className="text-xs text-[#64748B] mt-1">
+                  Paid to {consultation.company?.company_name || 'the company'} for consultation services
+                </p>
                 
                 <div className="flex items-center justify-between pt-3 border-t border-[#E5E7EB]">
                   <span className="text-sm font-medium text-[#334155]">Payment Status</span>
                   <StatusBadge 
-                    status={consultation.payment_status} 
-                    color={consultation.is_paid ? 'green' : 'yellow'} 
+                    status={getPaymentStatusBadgeStatus(consultation.payment_status)} 
                   />
                 </div>
                 
-                {!consultation.is_paid && (
+                {userRole === 'client' && !consultation.is_paid && consultation.payment_status !== 'paid' && (
                   <div className="pt-3 border-t border-[#E5E7EB]">
                     <Button fullWidth onClick={handlePay}>
                       Pay Now
                     </Button>
+                  </div>
+                )}
+                {userRole === 'client' && (consultation.is_paid || consultation.payment_status === 'paid') && (
+                  <div className="pt-3 border-t border-[#E5E7EB]">
+                    <div className="bg-[#D1FAE5] rounded-lg p-3 text-center">
+                      <p className="text-sm font-medium text-[#16A34A]">✓ Payment Completed</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -403,6 +493,117 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
           </Card>
         </div>
       </div>
+
+      {/* Create Project Modal */}
+      <Modal
+        isOpen={showCreateProjectModal}
+        onClose={() => setShowCreateProjectModal(false)}
+        title="Create New Project"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-[#334155] mb-1">
+              Project Title *
+            </label>
+            <Input
+              value={projectForm.title}
+              onChange={(e) => setProjectForm({ ...projectForm, title: e.target.value })}
+              placeholder="e.g., 3-Bedroom House Construction"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#334155] mb-1">
+              Description
+            </label>
+            <Textarea
+              value={projectForm.description}
+              onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
+              placeholder="Describe your project requirements..."
+              rows={4}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#334155] mb-1">
+              Location *
+            </label>
+            <Input
+              value={projectForm.location}
+              onChange={(e) => setProjectForm({ ...projectForm, location: e.target.value })}
+              placeholder="e.g., Lagos, Nigeria"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-1">
+                Budget Min (₦)
+              </label>
+              <Input
+                type="number"
+                value={projectForm.budget_min}
+                onChange={(e) => setProjectForm({ ...projectForm, budget_min: e.target.value })}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-1">
+                Budget Max (₦)
+              </label>
+              <Input
+                type="number"
+                value={projectForm.budget_max}
+                onChange={(e) => setProjectForm({ ...projectForm, budget_max: e.target.value })}
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => setShowCreateProjectModal(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!projectForm.title || !projectForm.location) {
+                  toast.error('Please fill in all required fields');
+                  return;
+                }
+
+                try {
+                  setIsCreatingProject(true);
+                  const project = await projectService.create({
+                    consultation_id: consultation!.id,
+                    title: projectForm.title,
+                    description: projectForm.description || undefined,
+                    location: projectForm.location,
+                    budget_min: projectForm.budget_min ? parseFloat(projectForm.budget_min) : undefined,
+                    budget_max: projectForm.budget_max ? parseFloat(projectForm.budget_max) : undefined,
+                  });
+                  
+                  toast.success('Project created successfully!');
+                  setShowCreateProjectModal(false);
+                  navigate(`/projects/${project.id}`);
+                } catch (error: any) {
+                  console.error('Failed to create project:', error);
+                  toast.error(error.response?.data?.message || 'Failed to create project');
+                } finally {
+                  setIsCreatingProject(false);
+                }
+              }}
+              disabled={isCreatingProject}
+              className="flex-1"
+            >
+              {isCreatingProject ? 'Creating...' : 'Create Project'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

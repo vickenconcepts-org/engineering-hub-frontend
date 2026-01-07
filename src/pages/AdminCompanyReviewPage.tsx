@@ -24,7 +24,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
   const [isProcessing, setIsProcessing] = useState(false);
   
   // Extract company ID from current path
-  const companyId = parseInt(window.location.pathname.split('/admin/companies/')[1]?.split('#')[0] || '0');
+  const companyId = window.location.pathname.split('/admin/companies/')[1]?.split('#')[0] || '';
   
   useEffect(() => {
     if (companyId) {

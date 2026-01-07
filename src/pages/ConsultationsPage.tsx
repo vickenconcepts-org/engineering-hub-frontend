@@ -36,6 +36,11 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
   
   // Fetch companies and consultations on mount
   useEffect(() => {
+    if (!userRole) {
+      // Wait for userRole to be available
+      return;
+    }
+    
     if (userRole === 'client') {
       loadCompanies();
     }
@@ -50,14 +55,21 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
         ...(searchQuery && { search: searchQuery }),
       });
       setCompanies(fetchedCompanies);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load companies:', error);
+      // Don't show toast here - API interceptor already handles it
+      // Just set empty array to prevent crashes
+      setCompanies([]);
     } finally {
       setIsLoadingCompanies(false);
     }
   };
   
   const loadConsultations = async () => {
+    if (!userRole) {
+      return;
+    }
+    
     try {
       setIsLoadingConsultations(true);
       // Use role-specific endpoints
@@ -67,9 +79,15 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
       } else if (userRole === 'client') {
         const { consultations: fetchedConsultations } = await consultationService.list();
         setConsultations(fetchedConsultations);
+      } else {
+        // For other roles, set empty array
+        setConsultations([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load consultations:', error);
+      // Don't show toast here - API interceptor already handles it
+      // Just set empty array to prevent crashes
+      setConsultations([]);
     } finally {
       setIsLoadingConsultations(false);
     }
@@ -109,7 +127,7 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
       });
       
       toast.success('Consultation booked successfully!');
-      setBookingModalOpen(false);
+    setBookingModalOpen(false);
       
       // Initialize payment
       const payment = await consultationService.pay(consultation.id);
@@ -139,31 +157,52 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
     });
   };
   
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  const getStatusBadgeStatus = (status: string): 'pending' | 'approved' | 'rejected' | 'scheduled' | 'completed' | 'active' => {
+    switch (status?.toLowerCase()) {
       case 'scheduled':
-        return 'blue';
+        return 'scheduled';
       case 'completed':
-        return 'green';
+        return 'completed';
+      case 'active':
+      case 'in_progress':
+        return 'active';
+      case 'pending':
+        return 'pending';
+      case 'approved':
+        return 'approved';
+      case 'rejected':
       case 'cancelled':
-        return 'red';
+        return 'rejected';
       default:
-        return 'gray';
+        return 'pending';
     }
   };
   
-  const getPaymentStatusColor = (status: string) => {
-    switch (status) {
+  const getPaymentStatusBadgeStatus = (status: string): 'pending' | 'approved' | 'rejected' => {
+    switch (status?.toLowerCase()) {
       case 'paid':
-        return 'green';
+        return 'approved';
       case 'pending':
-        return 'yellow';
+      case 'unpaid':
+        return 'pending';
       case 'refunded':
-        return 'red';
+        return 'rejected';
       default:
-        return 'gray';
+        return 'pending';
     }
   };
+  
+  // Show loading state while userRole is not available
+  if (!userRole) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
+          <p className="text-sm text-[#64748B]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">
@@ -178,11 +217,16 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
       </div>
       
       {/* My Consultations Section */}
-      {consultations.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-[#334155]">
-            {userRole === 'company' ? 'Consultation Requests' : 'My Consultations'}
-          </h2>
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-[#334155]">
+          {userRole === 'company' ? 'Consultation Requests' : 'My Consultations'}
+        </h2>
+        {isLoadingConsultations ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
+            <p className="text-sm text-[#64748B]">Loading consultations...</p>
+          </div>
+        ) : consultations.length > 0 ? (
           <div className="grid gap-4">
             {consultations.map((consultation) => (
               <Card key={consultation.id}>
@@ -194,10 +238,9 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
                           ? (consultation.client?.name || 'Client')
                           : (consultation.company?.company_name || 'Company')}
                       </h3>
-                      <StatusBadge status={consultation.status} color={getStatusColor(consultation.status)} />
+                      <StatusBadge status={getStatusBadgeStatus(consultation.status)} />
                       <StatusBadge 
-                        status={consultation.payment_status} 
-                        color={getPaymentStatusColor(consultation.payment_status)} 
+                        status={getPaymentStatusBadgeStatus(consultation.payment_status)} 
                       />
                     </div>
                     <div className="flex items-center gap-4 text-sm text-[#64748B]">
@@ -222,7 +265,7 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
                     >
                       View Details
                     </Button>
-                    {!consultation.is_paid && (
+                    {userRole === 'client' && !consultation.is_paid && consultation.payment_status !== 'paid' && (
                       <Button
                         onClick={async () => {
                           try {
@@ -236,13 +279,20 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
                         Pay Now
                       </Button>
                     )}
+                    {userRole === 'client' && (consultation.is_paid || consultation.payment_status === 'paid') && (
+                      <span className="text-sm text-[#16A34A] font-medium">Paid</span>
+                    )}
                   </div>
                 </div>
               </Card>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-sm text-[#64748B]">No consultations found</p>
+          </div>
+        )}
+      </div>
       
       {/* Browse Companies Section - Only for clients */}
       {userRole === 'client' && (
@@ -259,8 +309,8 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
         </div>
         
         {/* Search */}
-        <Card>
-          <CardContent>
+      <Card>
+        <CardContent>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#64748B]" />
               <input
@@ -274,12 +324,12 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
                   }
                 }}
                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none text-sm"
-              />
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Companies List */}
+            />
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Companies List */}
         {isLoadingCompanies ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
@@ -295,32 +345,32 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6">
-            {companies.map((company) => (
-              <Card key={company.id}>
-                <div className="flex flex-col md:flex-row gap-6">
-                  {/* Company Info */}
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-lg font-medium text-[#334155]">
+      <div className="grid gap-6">
+        {companies.map((company) => (
+          <Card key={company.id}>
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* Company Info */}
+              <div className="flex-1">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg font-medium text-[#334155]">
                             {company.company_name}
-                          </h3>
+                      </h3>
                           {company.is_verified && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#DBEAFE] text-[#1E40AF]">
-                              Verified
-                            </span>
-                          )}
-                        </div>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#DBEAFE] text-[#1E40AF]">
+                          Verified
+                        </span>
+                      )}
+                    </div>
                         {company.specialization && company.specialization.length > 0 && (
                           <p className="text-sm text-[#64748B]">
                             {company.specialization.join(', ')}
                           </p>
                         )}
-                      </div>
-                    </div>
-                    
+                  </div>
+                </div>
+                
                     {company.registration_number && (
                       <p className="text-sm text-[#64748B] mb-4">
                         Registration: {company.registration_number}
@@ -331,32 +381,32 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
                       <div className="flex items-center gap-2 text-sm text-[#64748B] mb-4">
                         <Building2 className="w-4 h-4" />
                         <span>Portfolio Available</span>
-                      </div>
+                  </div>
                     )}
-                  </div>
-                  
-                  {/* Booking Section */}
-                  <div className="md:w-64 flex flex-col justify-between md:border-l md:border-[#E5E7EB] md:pl-6">
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                        Consultation Fee
-                      </p>
-                      <p className="text-2xl font-semibold text-[#334155] mb-4">
+              </div>
+              
+              {/* Booking Section */}
+              <div className="md:w-64 flex flex-col justify-between md:border-l md:border-[#E5E7EB] md:pl-6">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                    Consultation Fee
+                  </p>
+                  <p className="text-2xl font-semibold text-[#334155] mb-4">
                         ₦25,000
-                      </p>
-                    </div>
-                    
-                    <Button
-                      fullWidth
-                      onClick={() => handleBookConsultation(company)}
-                    >
-                      Book Consultation
-                    </Button>
-                  </div>
+                  </p>
                 </div>
-              </Card>
-            ))}
-          </div>
+                
+                <Button
+                  fullWidth
+                      onClick={() => handleBookConsultation(company)}
+                >
+                  Book Consultation
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
         )}
       </div>
       )}
@@ -379,12 +429,12 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
       >
         <div className="space-y-4">
           {selectedCompany && (
-            <p className="text-sm text-[#64748B]">
-              You're about to book a consultation with{' '}
-              <strong className="text-[#334155]">
+          <p className="text-sm text-[#64748B]">
+            You're about to book a consultation with{' '}
+            <strong className="text-[#334155]">
                 {selectedCompany.company_name}
-              </strong>
-            </p>
+            </strong>
+          </p>
           )}
           
           <Input

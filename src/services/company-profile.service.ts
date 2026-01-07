@@ -4,8 +4,8 @@ import apiClient, { extractData, ApiResponse } from '../lib/api-client';
  * Company Profile interface
  */
 export interface CompanyProfile {
-  id: number;
-  user_id: number;
+  id: string; // UUID
+  user_id: string; // UUID
   company_name: string;
   registration_number: string;
   license_documents?: string[];
@@ -16,7 +16,7 @@ export interface CompanyProfile {
   is_verified: boolean;
   is_approved: boolean;
   user?: {
-    id: number;
+    id: string; // UUID
     name: string;
     email: string;
   };

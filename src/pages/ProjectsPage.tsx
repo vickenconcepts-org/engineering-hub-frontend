@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
 import { StatusBadge } from '../components/StatusBadge';
 import { Table, Pagination } from '../components/Table';
 import { projectService, Project } from '../services/project.service';
 
 interface ProjectsPageProps {
-  onNavigate: (path: string) => void;
   userRole?: 'client' | 'company' | 'admin' | null;
 }
 
-export function ProjectsPage({ onNavigate, userRole }: ProjectsPageProps) {
+export function ProjectsPage({ userRole }: ProjectsPageProps) {
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -209,7 +210,7 @@ export function ProjectsPage({ onNavigate, userRole }: ProjectsPageProps) {
         <Table
           columns={columns}
           data={projects}
-          onRowClick={(row) => onNavigate(`/projects/${row.id}`)}
+          onRowClick={(row) => navigate(`/projects/${row.id}`)}
           emptyMessage="No projects yet. Book a consultation to get started."
         />
         

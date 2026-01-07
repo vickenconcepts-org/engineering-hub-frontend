@@ -35,7 +35,7 @@ export const milestoneService = {
    * Fund milestone escrow (deposit payment) - CLIENT ONLY
    * Returns payment URL to redirect user to payment gateway
    */
-  async fundEscrow(id: number): Promise<MilestonePaymentInitResponse> {
+  async fundEscrow(id: string): Promise<MilestonePaymentInitResponse> {
     const response = await apiClient.post<ApiResponse<MilestonePaymentInitResponse>>(
       `/client/milestones/${id}/fund`
     );
@@ -46,7 +46,7 @@ export const milestoneService = {
    * Approve a milestone - CLIENT ONLY
    * Client approves milestone completion, allowing admin to release escrow
    */
-  async approve(id: number): Promise<Milestone> {
+  async approve(id: string): Promise<Milestone> {
     const response = await apiClient.post<ApiResponse<Milestone>>(
       `/client/milestones/${id}/approve`
     );
@@ -57,7 +57,7 @@ export const milestoneService = {
    * Reject a milestone - CLIENT ONLY
    * Client rejects milestone, creating a dispute automatically
    */
-  async reject(id: number, data: RejectMilestoneData): Promise<Milestone> {
+  async reject(id: string, data: RejectMilestoneData): Promise<Milestone> {
     const response = await apiClient.post<ApiResponse<Milestone>>(
       `/client/milestones/${id}/reject`,
       data
@@ -69,7 +69,7 @@ export const milestoneService = {
    * Submit milestone for approval - COMPANY ONLY
    * Company submits completed milestone with evidence for client review
    */
-  async submit(id: number): Promise<Milestone> {
+  async submit(id: string): Promise<Milestone> {
     const response = await apiClient.post<ApiResponse<Milestone>>(
       `/company/milestones/${id}/submit`
     );
@@ -80,7 +80,7 @@ export const milestoneService = {
    * Upload evidence for milestone - COMPANY ONLY
    * Company uploads photos, videos, or text evidence of milestone completion
    */
-  async uploadEvidence(id: number, data: UploadEvidenceData): Promise<any> {
+  async uploadEvidence(id: string, data: UploadEvidenceData): Promise<any> {
     const formData = new FormData();
     formData.append('type', data.type);
     formData.append('description', data.description);

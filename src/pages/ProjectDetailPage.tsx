@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Building2, DollarSign, Calendar, MapPin, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Building2, DollarSign, Calendar, MapPin, CheckCircle, Clock, AlertCircle, X } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
@@ -16,7 +16,7 @@ interface ProjectDetailPageProps {
 export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const projectId = parseInt(id || '0');
+  const projectId = id || '';
   const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'escrow'>('overview');
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +32,10 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
       setIsLoading(true);
       // Use role-specific endpoints
       let fetchedProject: Project;
-      if (userRole === 'company') {
+      if (userRole === 'admin') {
+        // Admin uses shared endpoint which allows viewing any project
+        fetchedProject = await projectService.getShared(projectId);
+      } else if (userRole === 'company') {
         fetchedProject = await projectService.getForCompany(projectId);
       } else {
         fetchedProject = await projectService.get(projectId);
@@ -93,7 +96,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
     }, 0) || 0,
   } : { funded: 0, released: 0 };
   
-  const handleFundMilestone = async (milestoneId: number) => {
+  const handleFundMilestone = async (milestoneId: string) => {
     try {
       const payment = await milestoneService.fundEscrow(milestoneId);
       window.location.href = payment.payment_url;
@@ -109,6 +112,8 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
         return <CheckCircle className="w-5 h-5" />;
       case 'submitted':
         return <AlertCircle className="w-5 h-5" />;
+      case 'rejected':
+        return <X className="w-5 h-5" />;
       default:
         return <Clock className="w-5 h-5" />;
     }
@@ -123,6 +128,8 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
         return 'bg-[#FEF3C7] text-[#F59E0B]';
       case 'funded':
         return 'bg-[#DBEAFE] text-[#2563EB]';
+      case 'rejected':
+        return 'bg-[#FEE2E2] text-[#DC2626]';
       default:
         return 'bg-[#F8FAFC] text-[#64748B]';
     }
@@ -367,62 +374,92 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
               </CardContent>
             </Card>
           ) : milestones.length > 0 ? (
-            milestones.map((milestone) => (
-              <Card
-                key={milestone.id}
-                onClick={() => navigate(`/milestones/${milestone.id}`)}
-                className="cursor-pointer hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-start gap-4 mb-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${getMilestoneStatusColor(milestone.status)}`}>
-                        {getMilestoneStatusIcon(milestone.status)}
-                      </div>
-                      
-                      <div className="flex-1">
-                        <h3 className="text-lg font-medium text-[#334155] mb-1">
-                          {milestone.title}
-                        </h3>
-                        {milestone.description && (
-                          <p className="text-sm text-[#64748B]">{milestone.description}</p>
-                        )}
+            milestones.map((milestone) => {
+              // Find dispute for this milestone
+              const milestoneDispute = project.disputes?.find(d => d.milestone_id === milestone.id);
+              
+              return (
+                <Card
+                  key={milestone.id}
+                  onClick={() => navigate(`/milestones/${milestone.id}`)}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-start gap-4 mb-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${getMilestoneStatusColor(milestone.status)}`}>
+                          {getMilestoneStatusIcon(milestone.status)}
+                        </div>
                         
-                        <div className="flex items-center gap-4 mt-3 text-sm">
-                          <span className="text-[#64748B]">
-                            Sequence: {milestone.sequence_order}
-                          </span>
-                          {milestone.escrow && (
-                            <span className="text-[#64748B]">
-                              Escrow: {milestone.escrow.status}
-                            </span>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-medium text-[#334155] mb-1">
+                            {milestone.title}
+                          </h3>
+                          {milestone.description && (
+                            <p className="text-sm text-[#64748B]">{milestone.description}</p>
                           )}
+                          
+                          {/* Show rejection reason for companies */}
+                          {userRole === 'company' && milestone.status === 'rejected' && milestoneDispute && (
+                            <div className="mt-2 p-3 bg-[#FEF3C7] rounded-lg border border-[#F59E0B]/20">
+                              <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                                Rejection Reason
+                              </p>
+                              <p className="text-sm text-[#334155] line-clamp-2">
+                                {milestoneDispute.reason}
+                              </p>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center gap-4 mt-3 text-sm">
+                            <span className="text-[#64748B]">
+                              Sequence: {milestone.sequence_order}
+                            </span>
+                            {milestone.escrow && (
+                              <span className="text-[#64748B]">
+                                Escrow: {milestone.escrow.status}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
+                    
+                    <div className="text-right ml-4">
+                      <p className="text-lg font-semibold text-[#334155] mb-2">
+                        ₦{milestone.amount.toLocaleString()}
+                      </p>
+                      <StatusBadge status={milestone.status} />
+                      {userRole === 'client' && milestone.status === 'pending' && !milestone.escrow && (
+                        <Button
+                          size="sm"
+                          className="mt-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFundMilestone(milestone.id);
+                          }}
+                        >
+                          Fund Escrow
+                        </Button>
+                      )}
+                      {userRole === 'company' && milestone.status === 'rejected' && (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          className="mt-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/milestones/${milestone.id}`);
+                          }}
+                        >
+                          View & Revise
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="text-right ml-4">
-                    <p className="text-lg font-semibold text-[#334155] mb-2">
-                      ₦{milestone.amount.toLocaleString()}
-                    </p>
-                    <StatusBadge status={milestone.status} />
-                    {milestone.status === 'pending' && !milestone.escrow && (
-                      <Button
-                        size="sm"
-                        className="mt-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleFundMilestone(milestone.id);
-                        }}
-                      >
-                        Fund Escrow
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            ))
+                </Card>
+              );
+            })
           ) : null}
         </div>
       )}

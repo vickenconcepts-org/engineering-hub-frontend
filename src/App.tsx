@@ -22,6 +22,7 @@ import { AdminCompaniesListPage } from './pages/AdminCompaniesListPage';
 import { AdminCompanyReviewPage } from './pages/AdminCompanyReviewPage';
 import { AdminDisputesListPage } from './pages/AdminDisputesListPage';
 import { AdminDisputePage } from './pages/AdminDisputePage';
+import { AdminEscrowPage } from './pages/AdminEscrowPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 type UserRole = 'client' | 'company' | 'admin' | null;
@@ -41,11 +42,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
           const currentUser = await authService.getCurrentUser();
           setUser(currentUser);
           setUserRole(currentUser.role as UserRole);
-          setIsAuthenticated(true);
+    setIsAuthenticated(true);
         } catch (error) {
           setUser(null);
-          setUserRole(null);
-          setIsAuthenticated(false);
+    setUserRole(null);
+    setIsAuthenticated(false);
           navigate('/login');
         }
       } else {
@@ -84,38 +85,43 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       }
     </AuthLayout>
   );
-}
-
+    }
+    
 // Wrapper components for pages that need params
 function ConsultationDetailWrapper({ userRole }: { userRole?: UserRole }) {
   const { id } = useParams<{ id: string }>();
-  return <ConsultationDetailPage consultationId={parseInt(id || '0')} userRole={userRole} />;
-}
-
+  return <ConsultationDetailPage consultationId={id || ''} userRole={userRole} />;
+  }
+  
 function ProjectDetailWrapper({ userRole }: { userRole?: UserRole }) {
   return <ProjectDetailPage userRole={userRole} />;
 }
 
 function CreateMilestonesWrapper({ userRole }: { userRole?: UserRole }) {
   const { id } = useParams<{ id: string }>();
-  return <CreateMilestonesPage projectId={parseInt(id || '0')} userRole={userRole} />;
-}
-
+  return <CreateMilestonesPage userRole={userRole} />;
+    }
+    
 function MilestoneDetailWrapper({ userRole }: { userRole?: UserRole }) {
-  const { id } = useParams<{ id: string }>();
-  return <MilestoneDetailPage milestoneId={parseInt(id || '0')} userRole={userRole} />;
-}
-
+  const navigate = useNavigate();
+  return <MilestoneDetailPage onNavigate={navigate} userRole={userRole} />;
+    }
+    
 function AdminCompanyReviewWrapper() {
-  const { id } = useParams<{ id: string }>();
-  return <AdminCompanyReviewPage companyId={parseInt(id || '0')} />;
-}
-
+  const navigate = useNavigate();
+  return <AdminCompanyReviewPage onNavigate={navigate} />;
+    }
+    
+function AdminDisputesListWrapper() {
+  const navigate = useNavigate();
+  return <AdminDisputesListPage onNavigate={navigate} />;
+    }
+    
 function AdminDisputeWrapper() {
-  const { id } = useParams<{ id: string }>();
-  return <AdminDisputePage disputeId={parseInt(id || '0')} />;
-}
-
+  const navigate = useNavigate();
+  return <AdminDisputePage onNavigate={navigate} />;
+    }
+    
 // Public route wrapper
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -140,35 +146,40 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }, [navigate]);
 
   if (isLoading) {
-    return (
+      return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
           <p className="text-sm text-[#64748B]">Loading...</p>
         </div>
-      </div>
-    );
-  }
-
+        </div>
+      );
+    }
+    
   if (isAuthenticated) {
     return null;
   }
 
   return <>{children}</>;
-}
-
+    }
+    
 function LoginWrapper() {
   const navigate = useNavigate();
   const handleLogin = () => navigate('/dashboard');
-  return <LoginPage onLogin={handleLogin} />;
-}
-
+  return <LoginPage onNavigate={navigate} onLogin={handleLogin} />;
+    }
+    
 function RegisterWrapper() {
   const navigate = useNavigate();
   const handleRegister = () => navigate('/dashboard');
-  return <RegisterPage onRegister={handleRegister} />;
-}
-
+  return <RegisterPage onNavigate={navigate} onRegister={handleRegister} />;
+    }
+    
+function LandingPageWrapper() {
+  const navigate = useNavigate();
+  return <LandingPage onNavigate={navigate} />;
+    }
+    
 // Context (not used in simplified version, but keeping for future)
 const UserContext = React.createContext<{ user: User | null; userRole: UserRole }>({
   user: null,
@@ -179,7 +190,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
+        <Route path="/" element={<PublicRoute><LandingPageWrapper /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><LoginWrapper /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><RegisterWrapper /></PublicRoute>} />
         <Route path="/payment/callback" element={<PaymentCallbackPage />} />
@@ -205,15 +216,8 @@ export default function App() {
         <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
         <Route path="/admin/companies" element={<ProtectedRoute><AdminCompaniesListPage /></ProtectedRoute>} />
         <Route path="/admin/companies/:id" element={<ProtectedRoute><AdminCompanyReviewWrapper /></ProtectedRoute>} />
-        <Route path="/admin/escrow" element={
-          <ProtectedRoute>
-            <div className="space-y-6">
-              <h1 className="text-2xl font-semibold text-[#334155]">Escrow Overview</h1>
-              <p className="text-sm text-[#64748B]">Escrow management coming soon</p>
-            </div>
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/disputes" element={<ProtectedRoute><AdminDisputesListPage /></ProtectedRoute>} />
+        <Route path="/admin/escrow" element={<ProtectedRoute><AdminEscrowPage /></ProtectedRoute>} />
+        <Route path="/admin/disputes" element={<ProtectedRoute><AdminDisputesListWrapper /></ProtectedRoute>} />
         <Route path="/admin/disputes/:id" element={<ProtectedRoute><AdminDisputeWrapper /></ProtectedRoute>} />
         
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

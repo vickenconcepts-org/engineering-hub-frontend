@@ -4,8 +4,8 @@ import apiClient, { extractData, extractMeta, ApiResponse } from '../lib/api-cli
  * Company interface (nested in consultation)
  */
 export interface Company {
-  id: number;
-  user_id: number;
+  id: string; // UUID
+  user_id: string; // UUID
   company_name: string;
   registration_number: string;
   license_documents?: string[];
@@ -16,7 +16,7 @@ export interface Company {
   is_verified: boolean;
   is_approved: boolean;
   user?: {
-    id: number;
+    id: string; // UUID
     name: string;
     email: string;
   };
@@ -28,9 +28,9 @@ export interface Company {
  * Consultation interface matching backend Consultation model
  */
 export interface Consultation {
-  id: number;
-  client_id: number;
-  company_id: number;
+  id: string; // UUID
+  client_id: string; // UUID
+  company_id: string; // UUID
   scheduled_at: string;
   duration_minutes: number;
   price: number;
@@ -41,7 +41,7 @@ export interface Consultation {
   is_completed: boolean;
   company?: Company;
   client?: {
-    id: number;
+    id: string; // UUID
     name: string;
     email: string;
   };
@@ -65,7 +65,7 @@ export interface PaginationMeta {
  * Create consultation request data
  */
 export interface CreateConsultationData {
-  company_id: number;
+  company_id: string; // UUID
   scheduled_at: string; // ISO datetime string
   duration_minutes?: number; // Optional, defaults to 30
   price: number;
@@ -122,7 +122,7 @@ export const consultationService = {
   /**
    * Get a specific consultation by ID (client)
    */
-  async get(id: number): Promise<Consultation> {
+  async get(id: string): Promise<Consultation> {
     const response = await apiClient.get<ApiResponse<Consultation>>(`/client/consultations/${id}`);
     return extractData<Consultation>(response);
   },
@@ -130,7 +130,7 @@ export const consultationService = {
   /**
    * Get a specific consultation by ID (company)
    */
-  async getForCompany(id: number): Promise<Consultation> {
+  async getForCompany(id: string): Promise<Consultation> {
     const response = await apiClient.get<ApiResponse<Consultation>>(`/company/consultations/${id}`);
     return extractData<Consultation>(response);
   },
@@ -147,7 +147,7 @@ export const consultationService = {
    * Initialize payment for a consultation (client only)
    * Returns payment URL to redirect user to payment gateway
    */
-  async pay(id: number): Promise<PaymentInitResponse> {
+  async pay(id: string): Promise<PaymentInitResponse> {
     const response = await apiClient.post<ApiResponse<PaymentInitResponse>>(
       `/client/consultations/${id}/pay`
     );
@@ -157,7 +157,7 @@ export const consultationService = {
   /**
    * Mark consultation as completed (company only)
    */
-  async complete(id: number): Promise<Consultation> {
+  async complete(id: string): Promise<Consultation> {
     const response = await apiClient.post<ApiResponse<Consultation>>(
       `/company/consultations/${id}/complete`
     );

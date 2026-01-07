@@ -20,11 +20,19 @@ export function PaymentCallbackPage({}: PaymentCallbackPageProps) {
   const reference = searchParams.get('reference') || searchParams.get('trxref');
   const paymentStatus = searchParams.get('status'); // 'success', 'failed', or 'error'
   const errorMessage = searchParams.get('message');
+  const consultationId = searchParams.get('consultation_id');
+  const milestoneId = searchParams.get('milestone_id');
+  const projectId = searchParams.get('project_id');
   
   useEffect(() => {
     if (paymentStatus === 'success' && reference) {
-      // Payment was already verified by backend, just fetch the updated data
-      handleSuccessfulPayment(reference);
+      // Payment was already verified by backend, redirect directly if we have IDs
+      if (consultationId || milestoneId || projectId) {
+        handleDirectRedirect();
+      } else {
+        // Fallback: fetch payment details
+        handleSuccessfulPayment(reference);
+      }
     } else if (paymentStatus === 'failed' || paymentStatus === 'error') {
       // Payment failed
       setStatus('error');
@@ -38,6 +46,32 @@ export function PaymentCallbackPage({}: PaymentCallbackPageProps) {
       setMessage('No payment reference found');
     }
   }, []);
+
+  const handleDirectRedirect = () => {
+    setStatus('success');
+    
+    let finalRedirectPath = '/dashboard';
+    if (consultationId) {
+      finalRedirectPath = `/consultations/${consultationId}`;
+      setMessage('Consultation payment successful!');
+    } else if (milestoneId) {
+      finalRedirectPath = `/milestones/${milestoneId}`;
+      setMessage('Escrow funded successfully!');
+    } else if (projectId) {
+      finalRedirectPath = `/projects/${projectId}`;
+      setMessage('Escrow funded successfully!');
+    } else {
+      setMessage('Payment verified successfully!');
+    }
+    
+    setRedirectPath(finalRedirectPath);
+    toast.success('Payment successful!');
+    
+    // Auto-redirect after 2 seconds
+    setTimeout(() => {
+      navigate(finalRedirectPath);
+    }, 2000);
+  };
   
   const handleSuccessfulPayment = async (paymentReference: string) => {
     try {

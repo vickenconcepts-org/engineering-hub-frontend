@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ArrowLeft, Plus, X, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
@@ -15,11 +16,13 @@ interface MilestoneFormData {
 }
 
 interface CreateMilestonesPageProps {
-  onNavigate: (path: string) => void;
   userRole?: 'client' | 'company' | 'admin' | null;
 }
 
-export function CreateMilestonesPage({ onNavigate, userRole }: CreateMilestonesPageProps) {
+export function CreateMilestonesPage({ userRole }: CreateMilestonesPageProps) {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const projectId = id || '';
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -32,15 +35,12 @@ export function CreateMilestonesPage({ onNavigate, userRole }: CreateMilestonesP
     },
   ]);
   
-  // Extract project ID from current path
-  const projectId = parseInt(window.location.pathname.split('/projects/')[1]?.split('/create-milestones')[0] || '0');
-  
   useEffect(() => {
     if (projectId && userRole === 'company') {
       loadProject();
     } else if (userRole !== 'company') {
       toast.error('Only companies can create milestones');
-      onNavigate('/projects');
+      navigate('/projects');
     }
   }, [projectId, userRole]);
   
@@ -51,7 +51,7 @@ export function CreateMilestonesPage({ onNavigate, userRole }: CreateMilestonesP
       
       if (fetchedProject.status !== 'draft') {
         toast.error('Can only create milestones for draft projects');
-        onNavigate(`/projects/${projectId}`);
+        navigate(`/projects/${projectId}`);
         return;
       }
       
@@ -59,7 +59,7 @@ export function CreateMilestonesPage({ onNavigate, userRole }: CreateMilestonesP
     } catch (error) {
       console.error('Failed to load project:', error);
       toast.error('Failed to load project');
-      onNavigate('/projects');
+      navigate('/projects');
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +153,7 @@ export function CreateMilestonesPage({ onNavigate, userRole }: CreateMilestonesP
       
       await projectService.createMilestones(projectId, milestonesData);
       toast.success('Milestones created successfully! Project is now active.');
-      onNavigate(`/projects/${projectId}`);
+      navigate(`/projects/${projectId}`);
     } catch (error) {
       console.error('Failed to create milestones:', error);
       // Error already handled by API client interceptor
@@ -193,7 +193,7 @@ export function CreateMilestonesPage({ onNavigate, userRole }: CreateMilestonesP
       <div className="flex items-center justify-between">
         <div>
           <button
-            onClick={() => onNavigate(`/projects/${projectId}`)}
+            onClick={() => navigate(`/projects/${projectId}`)}
             className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155] mb-2"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -338,7 +338,7 @@ export function CreateMilestonesPage({ onNavigate, userRole }: CreateMilestonesP
           <Button
             type="button"
             variant="outline"
-            onClick={() => onNavigate(`/projects/${projectId}`)}
+            onClick={() => navigate(`/projects/${projectId}`)}
             disabled={isSaving}
           >
             Cancel

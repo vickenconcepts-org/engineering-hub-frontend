@@ -67,6 +67,19 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
   
   const config = statusConfig[status];
   
+  // Fallback to pending if status is invalid
+  if (!config) {
+    console.warn(`Invalid status badge status: ${status}. Falling back to 'pending'.`);
+    const fallbackConfig = statusConfig.pending;
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${fallbackConfig.bg} ${fallbackConfig.text} ${className}`}
+      >
+        {status || 'Unknown'}
+      </span>
+    );
+  }
+  
   return (
     <span
       className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text} ${className}`}

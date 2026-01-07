@@ -90,6 +90,7 @@ export function AdminDisputesListPage({ onNavigate }: AdminDisputesListPageProps
   
   const columns = [
     { header: 'ID', accessor: (row: any) => row.id },
+    { header: 'Type', accessor: (row: any) => row.type },
     { header: 'Project', accessor: (row: any) => row.project },
     { header: 'Milestone', accessor: (row: any) => row.milestone },
     { header: 'Raised By', accessor: (row: any) => row.raised_by },
@@ -102,6 +103,17 @@ export function AdminDisputesListPage({ onNavigate }: AdminDisputesListPageProps
   const tableData = filteredDisputes.map((dispute) => ({
     id: (
       <p className="text-sm font-medium text-[#334155]">#{dispute.id}</p>
+    ),
+    type: (
+      <div>
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+          dispute.type === 'revision_request' 
+            ? 'bg-[#FEF3C7] text-[#F59E0B]' 
+            : 'bg-[#FEE2E2] text-[#DC2626]'
+        }`}>
+          {dispute.type === 'revision_request' ? 'Revision Request' : 'Dispute'}
+        </span>
+      </div>
     ),
     project: (
       <div>
@@ -130,9 +142,13 @@ export function AdminDisputesListPage({ onNavigate }: AdminDisputesListPageProps
     ),
     raised_by: (
       <div>
-        <p className="text-sm text-[#334155]">{dispute.raised_by_user?.name || 'N/A'}</p>
-        {dispute.raised_by_user?.email && (
-          <p className="text-xs text-[#64748B]">{dispute.raised_by_user.email}</p>
+        <p className="text-sm text-[#334155]">
+          {(dispute.raised_by_user || dispute.raised_by)?.name || 'N/A'}
+        </p>
+        {(dispute.raised_by_user || dispute.raised_by)?.email && (
+          <p className="text-xs text-[#64748B]">
+            {(dispute.raised_by_user || dispute.raised_by)?.email}
+          </p>
         )}
       </div>
     ),

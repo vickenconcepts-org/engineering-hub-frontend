@@ -40,14 +40,16 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Extract milestone ID from current path
-  const milestoneId = parseInt(window.location.pathname.split('/milestones/')[1]?.split('#')[0] || '0');
+  // Extract milestone ID and project ID from URL
+  const milestoneId = window.location.pathname.split('/milestones/')[1]?.split('#')[0] || '';
+  const urlParams = new URLSearchParams(window.location.search);
+  const projectIdFromUrl = urlParams.get('project_id') || urlParams.get('project');
   
   useEffect(() => {
     if (milestoneId) {
       loadMilestone();
     }
-  }, [milestoneId, userRole]);
+  }, [milestoneId, userRole, projectIdFromUrl]);
   
   const loadMilestone = async () => {
     try {
@@ -56,7 +58,31 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
       // Note: In production, consider adding GET /api/milestones/{id} endpoint
       // Use role-specific endpoints
       let projects: Project[];
-      if (userRole === 'company') {
+      if (userRole === 'admin') {
+        // Admin needs to fetch project directly using shared endpoint
+        // Try to get project_id from URL params first
+        if (projectIdFromUrl) {
+          const project = await projectService.getShared(projectIdFromUrl);
+          projects = [project];
+        } else {
+          // If no project_id in URL, fetch from admin milestones list to get project_id
+          // Admin milestones endpoint includes project relationship
+          const milestonesResult = await adminService.listEscrowMilestones({ 
+            per_page: 100, 
+            status: 'all' 
+          });
+          const milestoneWithProject = milestonesResult.milestones.find(m => m.id === milestoneId);
+          
+          if (milestoneWithProject && milestoneWithProject.project_id) {
+            // Found milestone with project_id, fetch the project
+            const project = await projectService.getShared(milestoneWithProject.project_id);
+            projects = [project];
+          } else {
+            toast.error('Milestone not found or project ID unavailable');
+            return;
+          }
+        }
+      } else if (userRole === 'company') {
         const result = await projectService.listForCompany({ per_page: 100 });
         projects = result.projects;
       } else {
@@ -87,7 +113,16 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
       
       // If milestone doesn't have evidence loaded, fetch project with full details
       if (!foundMilestone.evidence || foundMilestone.evidence.length === 0) {
-        const fullProject = await projectService.get(foundProject.id);
+        let fullProject: Project;
+        // Use role-specific endpoints
+        if (userRole === 'admin') {
+          // Admin uses shared endpoint which allows viewing any project
+          fullProject = await projectService.getShared(foundProject.id);
+        } else if (userRole === 'company') {
+          fullProject = await projectService.getForCompany(foundProject.id);
+        } else {
+          fullProject = await projectService.get(foundProject.id);
+        }
         const fullMilestone = fullProject.milestones?.find(m => m.id === milestoneId);
         if (fullMilestone) {
           foundMilestone = fullMilestone;
@@ -148,15 +183,19 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
   };
   
   const handleDispute = async () => {
-    if (!milestone || !disputeReason.trim()) {
+    if (!milestone || !disputeReason.trim() || !project) {
       toast.error('Please provide a reason for the dispute');
       return;
     }
     
     setIsProcessing(true);
     try {
-      // Reject milestone which automatically creates a dispute
-      await milestoneService.reject(milestone.id, { reason: disputeReason });
+      // Create a dispute directly (not a revision request)
+      const response = await apiClient.post('/disputes', {
+        project_id: project.id,
+        milestone_id: milestone.id,
+        reason: disputeReason,
+      });
       toast.success('Dispute created successfully. Admin will review within 24-48 hours.');
       setDisputeModalOpen(false);
       setDisputeReason('');
@@ -567,6 +606,117 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                 <p className="text-xs text-[#64748B] mt-3">
                   Upload evidence of completed work, then submit for client approval.
                 </p>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Company: Rejected Milestone Actions */}
+          {userRole === 'company' && milestone.status === 'rejected' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Revision Required</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {project.disputes && project.disputes.length > 0 && (
+                    <div className="bg-[#FEF3C7] rounded-lg p-4 border border-[#F59E0B]/20">
+                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-2">
+                        Rejection Reason
+                      </p>
+                      <p className="text-sm text-[#334155]">
+                        {project.disputes.find(d => d.milestone_id === milestone.id)?.reason || 
+                         project.disputes[0]?.reason || 
+                         'Client requested revisions'}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-3">
+                    <Button
+                      fullWidth
+                      onClick={() => setUploadEvidenceModalOpen(true)}
+                      disabled={isProcessing}
+                    >
+                      <ImageIcon className="w-4 h-4 mr-2" />
+                      Upload Revised Evidence
+                    </Button>
+                    
+                    {milestone.evidence && milestone.evidence.length > 0 && (
+                      <Button
+                        fullWidth
+                        variant="primary"
+                        onClick={async () => {
+                          try {
+                            setIsProcessing(true);
+                            await milestoneService.submit(milestone.id);
+                            toast.success('Milestone resubmitted for approval!');
+                            loadMilestone();
+                          } catch (error) {
+                            console.error('Resubmit error:', error);
+                          } finally {
+                            setIsProcessing(false);
+                          }
+                        }}
+                        disabled={isProcessing}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Resubmit for Approval
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <p className="text-xs text-[#64748B]">
+                    Address the client's concerns, upload revised evidence, then resubmit for approval.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Client: Rejected Milestone Info */}
+          {userRole === 'client' && milestone.status === 'rejected' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Revision Requested</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {project.disputes && project.disputes.length > 0 && (
+                    <div className="bg-[#F8FAFC] rounded-lg p-4 border border-[#E5E7EB]">
+                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-2">
+                        Your Revision Request
+                      </p>
+                      <p className="text-sm text-[#334155]">
+                        {project.disputes.find(d => d.milestone_id === milestone.id)?.reason || 
+                         project.disputes[0]?.reason || 
+                         'Revision requested'}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="bg-[#DBEAFE] rounded-lg p-4 border border-[#1E3A8A]/20">
+                    <p className="text-sm text-[#334155] mb-2">
+                      <strong>Next Steps:</strong>
+                    </p>
+                    <ul className="space-y-1 text-xs text-[#64748B]">
+                      <li>• Company will address your concerns</li>
+                      <li>• They will upload revised evidence</li>
+                      <li>• You'll be notified when they resubmit</li>
+                      <li>• Review the updated work and approve or request more changes</li>
+                    </ul>
+                  </div>
+                  
+                  {project.disputes && project.disputes.length > 0 && (
+                    <div className="pt-2 border-t border-[#E5E7EB]">
+                      <p className="text-xs text-[#64748B] mb-2">
+                        Dispute Status: <StatusBadge status={project.disputes.find(d => d.milestone_id === milestone.id)?.status || project.disputes[0]?.status || 'open'} />
+                      </p>
+                      <p className="text-xs text-[#64748B]">
+                        Admin will review the dispute and coordinate resolution between you and the company.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )}

@@ -30,7 +30,7 @@ export const companyService = {
   /**
    * Get a specific verified company by ID
    */
-  async get(id: number): Promise<Company> {
+  async get(id: string): Promise<Company> {
     const response = await apiClient.get<ApiResponse<Company>>(`/client/companies/${id}`);
     return extractData<Company>(response);
   },

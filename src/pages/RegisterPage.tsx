@@ -51,7 +51,7 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
       
       // Call onRegister with user role and user data
       onRegister(response.user.role as 'client' | 'company', response.user);
-      onNavigate('/dashboard');
+    onNavigate('/dashboard');
     } catch (error: any) {
       // Error is already handled by API client interceptor
       console.error('Registration error:', error);
