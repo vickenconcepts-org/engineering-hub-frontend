@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   LogOut,
+  Receipt,
 } from 'lucide-react';
 
 interface NavItem {
@@ -54,6 +55,7 @@ export function AuthLayout({
     { label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" />, path: '/dashboard' },
     { label: 'Consultations', icon: <Calendar className="w-5 h-5" />, path: '/consultations' },
     { label: 'Projects', icon: <FolderKanban className="w-5 h-5" />, path: '/projects' },
+    { label: 'Transactions', icon: <Receipt className="w-5 h-5" />, path: '/transactions' },
     { label: 'Messages', icon: <MessageSquare className="w-5 h-5" />, path: '/messages' },
     { label: 'Settings', icon: <Settings className="w-5 h-5" />, path: '/settings' },
   ];

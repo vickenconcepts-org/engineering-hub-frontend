@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Building2, Upload, X, Plus, AlertCircle, CheckCircle } from 'lucide-react';
+import { Building2, Upload, X, Plus, AlertCircle, CheckCircle, CreditCard, Trash2, Star } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { Select } from '../components/Select';
 import { StatusBadge } from '../components/StatusBadge';
 import { companyProfileService, CompanyProfile, CreateCompanyProfileData } from '../services/company-profile.service';
+import { paymentAccountService, PaymentAccount, CreatePaymentAccountData } from '../services/payment-account.service';
 
 interface SettingsPageProps {
   onNavigate: (path: string) => void;
@@ -23,6 +25,7 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
     registration_number: '',
     portfolio_links: [] as string[],
     specialization: [] as string[],
+    consultation_fee: 0,
   });
   
   const [licenseFiles, setLicenseFiles] = useState<File[]>([]);
@@ -48,6 +51,7 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
           registration_number: fetchedProfile.registration_number || '',
           portfolio_links: fetchedProfile.portfolio_links || [],
           specialization: fetchedProfile.specialization || [],
+          consultation_fee: fetchedProfile.consultation_fee ?? 0,
         });
       }
     } catch (error) {
@@ -133,21 +137,65 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.company_name || !formData.registration_number) {
-      toast.error('Company name and registration number are required');
-      return;
-    }
-    
     setIsSaving(true);
     
     try {
-      const profileData: CreateCompanyProfileData = {
-        company_name: formData.company_name,
-        registration_number: formData.registration_number,
-        portfolio_links: formData.portfolio_links.length > 0 ? formData.portfolio_links : undefined,
-        specialization: formData.specialization.length > 0 ? formData.specialization : undefined,
-        license_documents: licenseFiles.length > 0 ? licenseFiles : undefined,
-      };
+      const profileData: any = {};
+      
+      // Only include fields that can be updated (or consultation_fee which can always be updated)
+      // If company is approved, don't send core fields
+      // Check both is_approved and status === 'approved'
+      const isApproved = profile?.is_approved || profile?.status === 'approved';
+      console.log('Profile approval status:', { 
+        is_approved: profile?.is_approved, 
+        status: profile?.status, 
+        isApproved 
+      });
+      
+      if (!isApproved) {
+        if (!formData.company_name || !formData.registration_number) {
+          toast.error('Company name and registration number are required');
+          setIsSaving(false);
+          return;
+        }
+        profileData.company_name = formData.company_name;
+        profileData.registration_number = formData.registration_number;
+        if (formData.portfolio_links.length > 0) {
+          profileData.portfolio_links = formData.portfolio_links;
+        }
+        if (formData.specialization.length > 0) {
+          profileData.specialization = formData.specialization;
+        }
+        if (licenseFiles.length > 0) {
+          profileData.license_documents = licenseFiles;
+        }
+      } else {
+        console.log('Company is approved - only sending consultation_fee');
+      }
+      
+      // Always include consultation_fee if it's defined (even if 0) - can be updated anytime
+      // consultation_fee can be 0, so we check for undefined/null specifically, not falsy
+      if (formData.consultation_fee !== undefined && formData.consultation_fee !== null) {
+        // Ensure it's a number, not a string
+        const feeValue = typeof formData.consultation_fee === 'string' 
+          ? (formData.consultation_fee === '' ? null : parseFloat(formData.consultation_fee))
+          : formData.consultation_fee;
+        
+        if (feeValue !== null && !isNaN(feeValue)) {
+          profileData.consultation_fee = feeValue;
+        }
+      }
+      
+      // If no data to update, show message
+      if (Object.keys(profileData).length === 0) {
+        toast.error('No changes to save');
+        setIsSaving(false);
+        return;
+      }
+      
+      // Debug log
+      console.log('Sending profile data:', profileData);
+      console.log('Form data consultation_fee:', formData.consultation_fee, typeof formData.consultation_fee);
       
       if (profile) {
         // Update existing profile
@@ -172,7 +220,333 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
     }
   };
   
-  // Client/Admin settings (simple for now)
+  // Payment accounts state (for all users)
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
+  const [showAccountForm, setShowAccountForm] = useState(false);
+  const [banks, setBanks] = useState<Array<{ code: string; name: string }>>([]);
+  const [isLoadingBanks, setIsLoadingBanks] = useState(false);
+  const [isVerifyingAccount, setIsVerifyingAccount] = useState(false);
+  const [accountFormData, setAccountFormData] = useState<CreatePaymentAccountData>({
+    account_name: '',
+    account_number: '',
+    bank_code: '',
+    bank_name: '',
+    is_default: false,
+  });
+
+  useEffect(() => {
+    loadPaymentAccounts();
+    loadBanks();
+  }, []);
+
+  const loadPaymentAccounts = async () => {
+    try {
+      setIsLoadingAccounts(true);
+      const accounts = await paymentAccountService.list();
+      setPaymentAccounts(accounts);
+    } catch (error) {
+      console.error('Failed to load payment accounts:', error);
+    } finally {
+      setIsLoadingAccounts(false);
+    }
+  };
+
+  const loadBanks = async () => {
+    try {
+      setIsLoadingBanks(true);
+      const bankList = await paymentAccountService.getBanks();
+      setBanks(bankList);
+    } catch (error) {
+      console.error('Failed to load banks:', error);
+      toast.error('Failed to load banks list');
+    } finally {
+      setIsLoadingBanks(false);
+    }
+  };
+
+  const handleVerifyAccount = async () => {
+    if (!accountFormData.account_number || !accountFormData.bank_code) {
+      toast.error('Please enter account number and select a bank');
+      return;
+    }
+
+    try {
+      setIsVerifyingAccount(true);
+      const verified = await paymentAccountService.verifyAccount(
+        accountFormData.account_number,
+        accountFormData.bank_code
+      );
+      
+      setAccountFormData(prev => ({
+        ...prev,
+        account_name: verified.account_name,
+      }));
+      
+      toast.success('Account verified successfully!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to verify account. Please check the account number and bank.');
+    } finally {
+      setIsVerifyingAccount(false);
+    }
+  };
+
+  const handleAddAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await paymentAccountService.create(accountFormData);
+      toast.success('Payment account added successfully');
+      setShowAccountForm(false);
+      setAccountFormData({
+        account_name: '',
+        account_number: '',
+        bank_code: '',
+        bank_name: '',
+        is_default: false,
+      });
+      loadPaymentAccounts();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to add payment account');
+    }
+  };
+
+  const handleDeleteAccount = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this payment account?')) return;
+    try {
+      await paymentAccountService.delete(id);
+      toast.success('Payment account deleted successfully');
+      loadPaymentAccounts();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete payment account');
+    }
+  };
+
+  const handleSetDefault = async (id: string) => {
+    try {
+      await paymentAccountService.setDefault(id);
+      toast.success('Default account updated');
+      loadPaymentAccounts();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to set default account');
+    }
+  };
+
+  // Memoize bank options to prevent unnecessary re-renders
+  // Use a Map to ensure unique bank codes (in case of duplicates)
+  const bankOptions = useMemo(() => {
+    const bankMap = new Map();
+    banks.forEach(bank => {
+      if (!bankMap.has(bank.code)) {
+        bankMap.set(bank.code, {
+          value: bank.code,
+          label: bank.name,
+        });
+      }
+    });
+    return Array.from(bankMap.values());
+  }, [banks]);
+
+  // Payment Accounts JSX (inline to prevent re-creation on every render)
+  const paymentAccountsJSX = (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5" />
+            Payment Accounts
+          </CardTitle>
+          {!showAccountForm && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowAccountForm(true)}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add Account
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {showAccountForm && (
+          <form onSubmit={handleAddAccount} className="mb-6 p-4 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]">
+            <h3 className="text-sm font-medium text-[#334155] mb-4">Add Payment Account</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-[#64748B] mb-2">
+                  Bank <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  value={accountFormData.bank_code}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const selectedBank = banks.find(b => b.code === value);
+                    setAccountFormData(prev => ({
+                      ...prev,
+                      bank_code: value,
+                      bank_name: selectedBank?.name || '',
+                    }));
+                  }}
+                  options={bankOptions}
+                  placeholder={isLoadingBanks ? 'Loading banks...' : 'Select a bank'}
+                  disabled={isLoadingBanks}
+                  required
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    id="payment-account-number"
+                    label="Account Number"
+                    placeholder="0123456789"
+                    value={accountFormData.account_number}
+                    onChange={(e) => {
+                      setAccountFormData(prev => ({ ...prev, account_number: e.target.value }));
+                    }}
+                    required
+                  />
+                </div>
+                <div className="flex items-end pb-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleVerifyAccount}
+                    disabled={!accountFormData.account_number || !accountFormData.bank_code || isVerifyingAccount}
+                  >
+                    {isVerifyingAccount ? 'Verifying...' : 'Verify'}
+                  </Button>
+                </div>
+              </div>
+              
+              <Input
+                label="Account Name"
+                placeholder="Will be auto-filled after verification"
+                value={accountFormData.account_name}
+                onChange={(e) => {
+                  setAccountFormData(prev => ({ ...prev, account_name: e.target.value }));
+                }}
+                required
+                disabled={!!accountFormData.account_name}
+              />
+              
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="is_default"
+                  checked={accountFormData.is_default}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setAccountFormData(prev => ({ ...prev, is_default: checked }));
+                  }}
+                  className="w-4 h-4 rounded border-[#E5E7EB]"
+                />
+                <label htmlFor="is_default" className="text-sm text-[#64748B]">
+                  Set as default account
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Button type="submit" variant="primary" size="sm" disabled={!accountFormData.account_name}>
+                Add Account
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setShowAccountForm(false);
+                  setAccountFormData({
+                    account_name: '',
+                    account_number: '',
+                    bank_code: '',
+                    bank_name: '',
+                    is_default: false,
+                  });
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {isLoadingAccounts ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1E3A8A] mx-auto mb-2"></div>
+            <p className="text-sm text-[#64748B]">Loading accounts...</p>
+          </div>
+        ) : paymentAccounts.length === 0 ? (
+          <div className="text-center py-8">
+            <CreditCard className="w-12 h-12 text-[#64748B] mx-auto mb-2" />
+            <p className="text-sm text-[#64748B] mb-4">No payment accounts added yet</p>
+            {!showAccountForm && (
+              <Button variant="secondary" size="sm" onClick={() => setShowAccountForm(true)}>
+                <Plus className="w-4 h-4 mr-1" />
+                Add Your First Account
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {paymentAccounts.map((account) => (
+              <div
+                key={account.id}
+                className={`p-4 rounded-lg border ${
+                  account.is_default
+                    ? 'border-[#1E3A8A] bg-[#DBEAFE]'
+                    : 'border-[#E5E7EB] bg-white'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-medium text-[#334155]">{account.account_name}</p>
+                      {account.is_default && (
+                        <span className="px-2 py-0.5 bg-[#1E3A8A] text-white text-xs rounded-full flex items-center gap-1">
+                          <Star className="w-3 h-3" />
+                          Default
+                        </span>
+                      )}
+                      {account.is_verified && (
+                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                          Verified
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-[#64748B]">
+                      {account.account_number} • {account.bank_name || `Bank Code: ${account.bank_code}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!account.is_default && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleSetDefault(account.id)}
+                      >
+                        Set Default
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleDeleteAccount(account.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  // Client/Admin settings
   if (userRole !== 'company') {
     return (
       <div className="space-y-6">
@@ -181,13 +555,7 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
           <p className="text-sm text-[#64748B]">Manage your account settings</p>
         </div>
         
-        <Card>
-          <CardContent className="p-8">
-            <div className="text-center">
-              <p className="text-sm text-[#64748B]">Account settings coming soon</p>
-            </div>
-          </CardContent>
-        </Card>
+        {paymentAccountsJSX}
       </div>
     );
   }
@@ -298,6 +666,25 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
               <p className="text-xs text-[#64748B] mt-1">
                 Your official company registration number
               </p>
+            </div>
+            
+            {/* Consultation Fee */}
+            <div>
+              <Input
+                label="Consultation Fee (NGN)"
+                type="number"
+                value={formData.consultation_fee === 0 ? 0 : (formData.consultation_fee || '')}
+                onChange={(e) => {
+                  const inputValue = e.target.value;
+                  // Convert to number, default to 0 if empty
+                  const numValue = inputValue === '' ? 0 : (parseFloat(inputValue) || 0);
+                  setFormData({ ...formData, consultation_fee: numValue });
+                }}
+                placeholder="e.g., 25000"
+                min={0}
+                step="100"
+                helperText="Set your default consultation fee. Clients can override this when booking."
+              />
             </div>
             
             {/* License Documents */}
@@ -501,6 +888,9 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
           </CardContent>
         </Card>
       </form>
+      
+      {/* Payment Accounts Section */}
+      {paymentAccountsJSX}
     </div>
   );
 }

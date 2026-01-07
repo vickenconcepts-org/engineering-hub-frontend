@@ -76,6 +76,15 @@ export interface MilestoneForRelease {
     id: string; // UUID
     title: string;
     company_id: string; // UUID
+    company?: {
+      id: string; // UUID
+      user_id: string; // UUID
+      user?: {
+        id: string; // UUID
+        name: string;
+        email: string;
+      };
+    };
   };
 }
 

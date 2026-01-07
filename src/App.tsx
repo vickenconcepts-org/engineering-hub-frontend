@@ -24,6 +24,7 @@ import { AdminDisputesListPage } from './pages/AdminDisputesListPage';
 import { AdminDisputePage } from './pages/AdminDisputePage';
 import { AdminEscrowPage } from './pages/AdminEscrowPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { TransactionsPage } from './pages/TransactionsPage';
 
 type UserRole = 'client' | 'company' | 'admin' | null;
 
@@ -122,6 +123,11 @@ function AdminDisputeWrapper() {
   return <AdminDisputePage onNavigate={navigate} />;
     }
     
+function TransactionsWrapper({ userRole }: { userRole?: UserRole }) {
+  const navigate = useNavigate();
+  return <TransactionsPage onNavigate={navigate} userRole={userRole} />;
+    }
+    
 // Public route wrapper
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -202,6 +208,7 @@ export default function App() {
         <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetailWrapper /></ProtectedRoute>} />
         <Route path="/projects/:id/create-milestones" element={<ProtectedRoute><CreateMilestonesWrapper /></ProtectedRoute>} />
         <Route path="/milestones/:id" element={<ProtectedRoute><MilestoneDetailWrapper /></ProtectedRoute>} />
+        <Route path="/transactions" element={<ProtectedRoute><TransactionsWrapper /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/messages" element={
           <ProtectedRoute>

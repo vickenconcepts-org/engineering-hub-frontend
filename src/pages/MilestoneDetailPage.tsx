@@ -9,9 +9,11 @@ import { Textarea } from '../components/Textarea';
 import { projectService, Project, Milestone } from '../services/project.service';
 import { milestoneService } from '../services/milestone.service';
 import { adminService } from '../services/admin.service';
+import { paymentAccountService, PaymentAccount } from '../services/payment-account.service';
 import { getFileUrl } from '../lib/file-utils';
 import apiClient from '../lib/api-client';
 import { Input } from '../components/Input';
+import { Select } from '../components/Select';
 
 interface MilestoneDetailPageProps {
   onNavigate: (path: string) => void;
@@ -24,17 +26,20 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
   const [disputeModalOpen, setDisputeModalOpen] = useState(false);
   const [uploadEvidenceModalOpen, setUploadEvidenceModalOpen] = useState(false);
   const [releaseEscrowModalOpen, setReleaseEscrowModalOpen] = useState(false);
+  const [refundEscrowModalOpen, setRefundEscrowModalOpen] = useState(false);
+  const [companyReleaseModalOpen, setCompanyReleaseModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [disputeReason, setDisputeReason] = useState('');
+  const [refundReason, setRefundReason] = useState('');
   const [evidenceType, setEvidenceType] = useState<'image' | 'video' | 'text'>('image');
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidenceDescription, setEvidenceDescription] = useState('');
-  const [recipientAccount, setRecipientAccount] = useState({
-    account_number: '',
-    bank_code: '',
-    name: '',
-  });
   const [adminOverride, setAdminOverride] = useState(false);
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
+  const [companyAccounts, setCompanyAccounts] = useState<PaymentAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedCompanyAccountId, setSelectedCompanyAccountId] = useState<string>('');
+  const [isLoadingCompanyAccounts, setIsLoadingCompanyAccounts] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
   const [milestone, setMilestone] = useState<Milestone | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,6 +55,64 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
       loadMilestone();
     }
   }, [milestoneId, userRole, projectIdFromUrl]);
+
+  useEffect(() => {
+    if (companyReleaseModalOpen || refundEscrowModalOpen) {
+      loadPaymentAccounts();
+    }
+  }, [companyReleaseModalOpen, refundEscrowModalOpen]);
+
+  useEffect(() => {
+    if (releaseEscrowModalOpen && userRole === 'admin' && project) {
+      loadCompanyAccounts();
+    }
+  }, [releaseEscrowModalOpen, project, userRole]);
+
+  const loadPaymentAccounts = async () => {
+    try {
+      const accounts = await paymentAccountService.list();
+      setPaymentAccounts(accounts);
+      const defaultAccount = accounts.find(acc => acc.is_default);
+      if (defaultAccount) {
+        setSelectedAccountId(defaultAccount.id);
+      } else if (accounts.length > 0) {
+        setSelectedAccountId(accounts[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to load payment accounts:', error);
+    }
+  };
+
+  const loadCompanyAccounts = async () => {
+    if (!project) {
+      return;
+    }
+
+    // Try to get company user_id from project
+    // Check if project has company.user_id or company.user.id
+    const companyUserId = (project as any)?.company?.user_id || (project as any)?.company?.user?.id;
+    if (!companyUserId) {
+      toast.error('Company user information not available. Please refresh the page.');
+      return;
+    }
+
+    try {
+      setIsLoadingCompanyAccounts(true);
+      const accounts = await paymentAccountService.getUserAccounts(companyUserId);
+      setCompanyAccounts(accounts);
+      const defaultAccount = accounts.find(acc => acc.is_default);
+      if (defaultAccount) {
+        setSelectedCompanyAccountId(defaultAccount.id);
+      } else if (accounts.length > 0) {
+        setSelectedCompanyAccountId(accounts[0].id);
+      }
+    } catch (error: any) {
+      console.error('Failed to load company accounts:', error);
+      toast.error('Failed to load company payment accounts');
+    } finally {
+      setIsLoadingCompanyAccounts(false);
+    }
+  };
   
   const loadMilestone = async () => {
     try {
@@ -535,6 +598,28 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
               </CardContent>
             </Card>
           )}
+
+          {/* Client: Request Refund */}
+          {userRole === 'client' && milestone.escrow && milestone.escrow.status === 'held' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Escrow Refund</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-[#64748B] mb-4">
+                  Request a refund for the escrow funds. This will cancel the milestone payment.
+                </p>
+                <Button
+                  fullWidth
+                  variant="danger"
+                  onClick={() => setRefundEscrowModalOpen(true)}
+                  disabled={isProcessing}
+                >
+                  Request Refund
+                </Button>
+              </CardContent>
+            </Card>
+          )}
           
           {/* Client: Funding Required */}
           {userRole === 'client' && milestone.status === 'pending' && !milestone.escrow && (
@@ -563,6 +648,28 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
             </Card>
           )}
           
+          {/* Company: Request Escrow Release */}
+          {userRole === 'company' && milestone.escrow && milestone.escrow.status === 'held' && milestone.status === 'approved' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Escrow Release</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-[#64748B] mb-4">
+                  Milestone has been approved. Request release of escrow funds to your account.
+                </p>
+                <Button
+                  fullWidth
+                  variant="primary"
+                  onClick={() => setCompanyReleaseModalOpen(true)}
+                  disabled={isProcessing}
+                >
+                  Request Escrow Release
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Company Actions */}
           {userRole === 'company' && milestone.status === 'funded' && (
             <Card>
@@ -1043,8 +1150,14 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
             onClick: async () => {
               if (!milestone || !milestone.escrow) return;
               
-              if (!recipientAccount.account_number || !recipientAccount.bank_code || !recipientAccount.name) {
-                toast.error('Please fill in all recipient account details');
+              if (companyAccounts.length === 0) {
+                toast.error('Company has no payment accounts. Please ask them to add one first.');
+                return;
+              }
+
+              const selectedAccount = companyAccounts.find(acc => acc.id === selectedCompanyAccountId);
+              if (!selectedAccount) {
+                toast.error('Please select a payment account');
                 return;
               }
               
@@ -1052,26 +1165,30 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
               try {
                 await adminService.releaseEscrow(milestone.id, {
                   override: adminOverride,
-                  recipient_account: recipientAccount,
+                  recipient_account: {
+                    account_number: selectedAccount.account_number,
+                    bank_code: selectedAccount.bank_code,
+                    name: selectedAccount.account_name,
+                  },
                 });
                 toast.success('Escrow funds released successfully!');
                 setReleaseEscrowModalOpen(false);
-                setRecipientAccount({ account_number: '', bank_code: '', name: '' });
+                setSelectedCompanyAccountId('');
                 setAdminOverride(false);
                 loadMilestone();
-              } catch (error) {
-                console.error('Release error:', error);
+              } catch (error: any) {
+                toast.error(error.response?.data?.message || 'Failed to release escrow funds');
               } finally {
                 setIsProcessing(false);
               }
             },
-            disabled: isProcessing || !recipientAccount.account_number || !recipientAccount.bank_code || !recipientAccount.name,
+            disabled: isProcessing || companyAccounts.length === 0 || !selectedCompanyAccountId,
           }}
           secondaryAction={{
             label: 'Cancel',
             onClick: () => {
               setReleaseEscrowModalOpen(false);
-              setRecipientAccount({ account_number: '', bank_code: '', name: '' });
+              setSelectedCompanyAccountId('');
               setAdminOverride(false);
             },
             disabled: isProcessing,
@@ -1104,39 +1221,52 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                 </label>
               </div>
             )}
-            
-            <div>
-              <p className="text-sm font-medium text-[#334155] mb-3">
-                Recipient Bank Account Details
-              </p>
-              
-              <div className="space-y-3">
-                <Input
-                  label="Account Number"
-                  placeholder="0123456789"
-                  value={recipientAccount.account_number}
-                  onChange={(e) => setRecipientAccount({ ...recipientAccount, account_number: e.target.value })}
-                  required
-                />
-                
-                <Input
-                  label="Bank Code"
-                  placeholder="058"
-                  value={recipientAccount.bank_code}
-                  onChange={(e) => setRecipientAccount({ ...recipientAccount, bank_code: e.target.value })}
-                  helperText="Paystack bank code (e.g., 058 for GTBank)"
-                  required
-                />
-                
-                <Input
-                  label="Account Name"
-                  placeholder="Company Name"
-                  value={recipientAccount.name}
-                  onChange={(e) => setRecipientAccount({ ...recipientAccount, name: e.target.value })}
-                  required
-                />
+
+            {isLoadingCompanyAccounts ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1E3A8A] mx-auto mb-2"></div>
+                <p className="text-sm text-[#64748B]">Loading company payment accounts...</p>
               </div>
-            </div>
+            ) : companyAccounts.length === 0 ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800 mb-2">
+                  Company has no payment accounts linked. Please ask them to add a payment account in their settings.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-2">
+                  Select Company Payment Account <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  value={selectedCompanyAccountId}
+                  onChange={(e) => setSelectedCompanyAccountId(e.target.value)}
+                  options={companyAccounts.map(acc => ({
+                    value: acc.id,
+                    label: `${acc.account_name} - ${acc.account_number}${acc.is_default ? ' (Default)' : ''}`,
+                  }))}
+                  placeholder="Select payment account"
+                  required
+                />
+                {selectedCompanyAccountId && (
+                  <div className="mt-3 p-3 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]">
+                    {(() => {
+                      const account = companyAccounts.find(acc => acc.id === selectedCompanyAccountId);
+                      return account ? (
+                        <div className="text-sm text-[#64748B]">
+                          <p><strong>Account:</strong> {account.account_name}</p>
+                          <p><strong>Number:</strong> {account.account_number}</p>
+                          <p><strong>Bank:</strong> {account.bank_name || `Code: ${account.bank_code}`}</p>
+                          {account.is_verified && (
+                            <p className="text-green-600 mt-1">✓ Verified</p>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
             
             <div className="bg-[#D1FAE5] rounded-lg p-4 border border-[#16A34A]/20">
               <p className="text-sm text-[#334155] mb-2">
@@ -1148,6 +1278,235 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                 <li>• Update escrow status</li>
                 <li>• Notify both parties</li>
               </ul>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Company: Request Escrow Release Modal */}
+      {userRole === 'company' && (
+        <Modal
+          isOpen={companyReleaseModalOpen}
+          onClose={() => !isProcessing && setCompanyReleaseModalOpen(false)}
+          title="Request Escrow Release"
+          size="lg"
+          primaryAction={{
+            label: isProcessing ? 'Processing...' : 'Request Release',
+            onClick: async () => {
+              if (!milestone || !milestone.escrow) return;
+              
+              if (paymentAccounts.length === 0) {
+                toast.error('Please add a payment account in Settings first');
+                return;
+              }
+              
+              setIsProcessing(true);
+              try {
+                await paymentAccountService.requestEscrowRelease(milestone.id, {
+                  account_id: selectedAccountId || undefined,
+                });
+                toast.success('Escrow release requested successfully!');
+                setCompanyReleaseModalOpen(false);
+                loadMilestone();
+              } catch (error: any) {
+                toast.error(error.response?.data?.message || 'Failed to request escrow release');
+              } finally {
+                setIsProcessing(false);
+              }
+            },
+            disabled: isProcessing || paymentAccounts.length === 0,
+          }}
+          secondaryAction={{
+            label: 'Cancel',
+            onClick: () => {
+              setCompanyReleaseModalOpen(false);
+            },
+            disabled: isProcessing,
+          }}
+        >
+          <div className="space-y-4">
+            <div className="bg-[#F8FAFC] rounded-lg p-4 border border-[#E5E7EB]">
+              <p className="text-sm text-[#334155] mb-2">
+                <strong>Release Details:</strong>
+              </p>
+              <div className="space-y-1 text-sm text-[#64748B]">
+                <p>Milestone: {milestone?.title}</p>
+                <p>Amount: ₦{milestone?.escrow?.amount.toLocaleString()}</p>
+              </div>
+            </div>
+
+            {paymentAccounts.length === 0 ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800 mb-2">
+                  No payment accounts found. Please add a payment account in Settings first.
+                </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setCompanyReleaseModalOpen(false);
+                    onNavigate('/settings');
+                  }}
+                >
+                  Go to Settings
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-2">
+                  Select Payment Account
+                </label>
+                <Select
+                  value={selectedAccountId}
+                  onChange={(e) => setSelectedAccountId(e.target.value)}
+                  options={paymentAccounts.map(acc => ({
+                    value: acc.id,
+                    label: `${acc.account_name} - ${acc.account_number}${acc.is_default ? ' (Default)' : ''}`,
+                  }))}
+                />
+                {selectedAccountId && (
+                  <div className="mt-3 p-3 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]">
+                    {(() => {
+                      const account = paymentAccounts.find(acc => acc.id === selectedAccountId);
+                      return account ? (
+                        <div className="text-sm text-[#64748B]">
+                          <p><strong>Account:</strong> {account.account_name}</p>
+                          <p><strong>Number:</strong> {account.account_number}</p>
+                          <p><strong>Bank:</strong> {account.bank_name || `Code: ${account.bank_code}`}</p>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="bg-[#D1FAE5] rounded-lg p-4 border border-[#16A34A]/20">
+              <p className="text-sm text-[#334155] mb-2">
+                <strong>This action will:</strong>
+              </p>
+              <ul className="space-y-1 text-sm text-[#64748B]">
+                <li>• Transfer funds from escrow to your selected account</li>
+                <li>• Mark milestone as released</li>
+                <li>• Update escrow status</li>
+              </ul>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Client: Request Refund Modal */}
+      {userRole === 'client' && (
+        <Modal
+          isOpen={refundEscrowModalOpen}
+          onClose={() => !isProcessing && setRefundEscrowModalOpen(false)}
+          title="Request Escrow Refund"
+          size="lg"
+          primaryAction={{
+            label: isProcessing ? 'Processing...' : 'Request Refund',
+            onClick: async () => {
+              if (!milestone || !milestone.escrow) return;
+              
+              if (!refundReason.trim()) {
+                toast.error('Please provide a reason for the refund');
+                return;
+              }
+
+              if (paymentAccounts.length === 0) {
+                toast.error('Please add a payment account in Settings first');
+                return;
+              }
+              
+              setIsProcessing(true);
+              try {
+                await paymentAccountService.requestEscrowRefund(milestone.id, {
+                  reason: refundReason,
+                  account_id: selectedAccountId || undefined,
+                });
+                toast.success('Refund requested successfully!');
+                setRefundEscrowModalOpen(false);
+                setRefundReason('');
+                loadMilestone();
+              } catch (error: any) {
+                toast.error(error.response?.data?.message || 'Failed to request refund');
+              } finally {
+                setIsProcessing(false);
+              }
+            },
+            disabled: isProcessing || !refundReason.trim() || paymentAccounts.length === 0,
+          }}
+          secondaryAction={{
+            label: 'Cancel',
+            onClick: () => {
+              setRefundEscrowModalOpen(false);
+              setRefundReason('');
+            },
+            disabled: isProcessing,
+          }}
+        >
+          <div className="space-y-4">
+            <div className="bg-[#F8FAFC] rounded-lg p-4 border border-[#E5E7EB]">
+              <p className="text-sm text-[#334155] mb-2">
+                <strong>Refund Details:</strong>
+              </p>
+              <div className="space-y-1 text-sm text-[#64748B]">
+                <p>Milestone: {milestone?.title}</p>
+                <p>Amount: ₦{milestone?.escrow?.amount.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-2">
+                Reason for Refund <span className="text-red-500">*</span>
+              </label>
+              <Textarea
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                placeholder="Please explain why you are requesting a refund..."
+                rows={4}
+                required
+              />
+            </div>
+
+            {paymentAccounts.length === 0 ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800 mb-2">
+                  No payment accounts found. Please add a payment account in Settings first.
+                </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setRefundEscrowModalOpen(false);
+                    onNavigate('/settings');
+                  }}
+                >
+                  Go to Settings
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-2">
+                  Refund to Account
+                </label>
+                <Select
+                  value={selectedAccountId}
+                  onChange={(e) => setSelectedAccountId(e.target.value)}
+                  options={paymentAccounts.map(acc => ({
+                    value: acc.id,
+                    label: `${acc.account_name} - ${acc.account_number}${acc.is_default ? ' (Default)' : ''}`,
+                  }))}
+                />
+              </div>
+            )}
+
+            <div className="bg-[#FEF3C7] rounded-lg p-4 border border-[#F59E0B]/20">
+              <p className="text-sm text-[#334155] mb-2">
+                <strong>Note:</strong>
+              </p>
+              <p className="text-sm text-[#64748B]">
+                This will cancel the milestone payment and refund the escrow amount to your selected account.
+              </p>
             </div>
           </div>
         </Modal>

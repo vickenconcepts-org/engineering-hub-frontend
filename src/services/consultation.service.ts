@@ -11,6 +11,7 @@ export interface Company {
   license_documents?: string[];
   portfolio_links?: string[];
   specialization?: string[];
+  consultation_fee?: number;
   verified_at?: string;
   status: string;
   is_verified: boolean;

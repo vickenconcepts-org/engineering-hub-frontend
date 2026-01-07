@@ -11,6 +11,7 @@ export interface CompanyProfile {
   license_documents?: string[];
   portfolio_links?: string[];
   specialization?: string[];
+  consultation_fee?: number;
   verified_at?: string;
   status: string;
   is_verified: boolean;
@@ -44,6 +45,7 @@ export interface UpdateCompanyProfileData {
   license_documents?: File[];
   portfolio_links?: string[];
   specialization?: string[];
+  consultation_fee?: number;
 }
 
 /**
@@ -103,6 +105,8 @@ export const companyProfileService = {
   async update(data: UpdateCompanyProfileData): Promise<CompanyProfile> {
     const formData = new FormData();
     
+    console.log('Company Profile Service - Update data received:', data);
+    
     if (data.company_name) {
       formData.append('company_name', data.company_name);
     }
@@ -127,9 +131,32 @@ export const companyProfileService = {
         formData.append('license_documents[]', file);
       });
     }
+    
+    // Always send consultation_fee if it's defined (including 0)
+    // Check explicitly for undefined/null, not falsy (0 is falsy but valid)
+    console.log('Consultation fee check:', {
+      consultation_fee: data.consultation_fee,
+      type: typeof data.consultation_fee,
+      isUndefined: data.consultation_fee === undefined,
+      isNull: data.consultation_fee === null,
+    });
+    
+    if (data.consultation_fee !== undefined && data.consultation_fee !== null) {
+      formData.append('consultation_fee', data.consultation_fee.toString());
+      console.log('Added consultation_fee to FormData:', data.consultation_fee.toString());
+    } else {
+      console.log('NOT adding consultation_fee - undefined or null');
+    }
+    
+    // Debug: Log all FormData entries
+    console.log('FormData entries:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, value);
+    }
 
+    // Use POST endpoint for FormData updates (PUT doesn't work well with FormData in Laravel)
     // Don't set Content-Type header - let axios set it automatically with boundary for FormData
-    const response = await apiClient.put<ApiResponse<CompanyProfile>>('/company/profile', formData);
+    const response = await apiClient.post<ApiResponse<CompanyProfile>>('/company/profile/update', formData);
     return extractData<CompanyProfile>(response);
   },
 };

@@ -31,7 +31,7 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
     scheduledDate: '',
     scheduledTime: '',
     durationMinutes: 30,
-    price: 25000, // Default price in NGN
+    price: 0, // Default price - will be set from company's consultation_fee
   });
   
   // Fetch companies and consultations on mount
@@ -95,11 +95,21 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
   
   const handleBookConsultation = (company: Company) => {
     setSelectedCompany(company);
+    // Use company's consultation_fee if available, otherwise default to 0
+    const companyFee = (company as any).consultation_fee;
+    const defaultPrice = companyFee && companyFee > 0 ? companyFee : 0;
+    
+    console.log('Booking consultation with company:', {
+      companyName: company.company_name,
+      consultation_fee: companyFee,
+      defaultPrice,
+    });
+    
     setBookingForm({
       scheduledDate: '',
       scheduledTime: '',
       durationMinutes: 30,
-      price: 25000, // Default consultation fee
+      price: defaultPrice,
     });
     setBookingModalOpen(true);
   };
@@ -392,8 +402,13 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
                     Consultation Fee
                   </p>
                   <p className="text-2xl font-semibold text-[#334155] mb-4">
-                        ₦25,000
+                    ₦{((company as any).consultation_fee && (company as any).consultation_fee > 0 
+                      ? (company as any).consultation_fee 
+                      : 0).toLocaleString()}
                   </p>
+                  {!((company as any).consultation_fee && (company as any).consultation_fee > 0) && (
+                    <p className="text-xs text-[#64748B]">Fee not set by company</p>
+                  )}
                 </div>
                 
                 <Button
@@ -474,6 +489,11 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
             onChange={(e) => setBookingForm({ ...bookingForm, price: parseFloat(e.target.value) || 0 })}
             min={0}
             required
+            helperText={selectedCompany && (selectedCompany as any).consultation_fee && (selectedCompany as any).consultation_fee > 0
+              ? `Company's default fee: ₦${(selectedCompany as any).consultation_fee.toLocaleString()}. You can change this.`
+              : selectedCompany 
+                ? 'Enter the consultation fee (company has not set a default fee)'
+                : 'Enter the consultation fee'}
           />
           
           <div className="pt-4 border-t border-[#E5E7EB]">

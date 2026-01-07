@@ -4,7 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
 import { Table, Pagination } from '../components/Table';
+import { Modal } from '../components/Modal';
+import { Select } from '../components/Select';
 import { adminService, MilestoneForRelease } from '../services/admin.service';
+import { paymentAccountService, PaymentAccount } from '../services/payment-account.service';
 import { DollarSign, Eye, CheckCircle, XCircle, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -17,6 +20,13 @@ export function AdminEscrowPage() {
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState<'held' | 'released' | 'all'>('held');
   const [perPage] = useState(15);
+  const [releaseModalOpen, setReleaseModalOpen] = useState(false);
+  const [selectedMilestone, setSelectedMilestone] = useState<MilestoneForRelease | null>(null);
+  const [companyAccounts, setCompanyAccounts] = useState<PaymentAccount[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [adminOverride, setAdminOverride] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     loadMilestones();
@@ -101,6 +111,68 @@ export function AdminEscrowPage() {
       }, 0);
   };
 
+  const loadCompanyAccounts = async (milestone: MilestoneForRelease) => {
+    const companyUserId = milestone.project?.company?.user_id || milestone.project?.company?.user?.id;
+    if (!companyUserId) {
+      toast.error('Company user information not available');
+      return;
+    }
+
+    try {
+      setIsLoadingAccounts(true);
+      const accounts = await paymentAccountService.getUserAccounts(companyUserId);
+      setCompanyAccounts(accounts);
+      const defaultAccount = accounts.find(acc => acc.is_default);
+      if (defaultAccount) {
+        setSelectedAccountId(defaultAccount.id);
+      } else if (accounts.length > 0) {
+        setSelectedAccountId(accounts[0].id);
+      }
+    } catch (error: any) {
+      console.error('Failed to load company accounts:', error);
+      toast.error('Failed to load company payment accounts');
+    } finally {
+      setIsLoadingAccounts(false);
+    }
+  };
+
+  const handleRelease = async () => {
+    if (!selectedMilestone || !selectedMilestone.escrow) return;
+
+    if (companyAccounts.length === 0) {
+      toast.error('Company has no payment accounts. Please ask them to add one first.');
+      return;
+    }
+
+    const selectedAccount = companyAccounts.find(acc => acc.id === selectedAccountId);
+    if (!selectedAccount) {
+      toast.error('Please select a payment account');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await adminService.releaseEscrow(selectedMilestone.id, {
+        override: adminOverride,
+        recipient_account: {
+          account_number: selectedAccount.account_number,
+          bank_code: selectedAccount.bank_code,
+          name: selectedAccount.account_name,
+        },
+      });
+      toast.success('Escrow funds released successfully!');
+      setReleaseModalOpen(false);
+      setSelectedMilestone(null);
+      setSelectedAccountId('');
+      setAdminOverride(false);
+      loadMilestones();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to release escrow funds');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const columns = [
     {
       header: 'Milestone',
@@ -167,8 +239,9 @@ export function AdminEscrowPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => {
-                  // TODO: Open release modal
-                  toast.success('Release functionality coming soon');
+                  setSelectedMilestone(milestone);
+                  setReleaseModalOpen(true);
+                  loadCompanyAccounts(milestone);
                 }}
                 className="bg-green-600 hover:bg-green-700"
               >
@@ -288,6 +361,116 @@ export function AdminEscrowPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Release Escrow Modal */}
+      <Modal
+        isOpen={releaseModalOpen}
+        onClose={() => !isProcessing && setReleaseModalOpen(false)}
+        title="Release Escrow Funds"
+        size="lg"
+        primaryAction={{
+          label: isProcessing ? 'Releasing...' : 'Release Funds',
+          onClick: handleRelease,
+          disabled: isProcessing || companyAccounts.length === 0 || !selectedAccountId,
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: () => {
+            setReleaseModalOpen(false);
+            setSelectedMilestone(null);
+            setSelectedAccountId('');
+            setAdminOverride(false);
+          },
+          disabled: isProcessing,
+        }}
+      >
+        <div className="space-y-4">
+          <div className="bg-[#F8FAFC] rounded-lg p-4 border border-[#E5E7EB]">
+            <p className="text-sm text-[#334155] mb-2">
+              <strong>Release Details:</strong>
+            </p>
+            <div className="space-y-1 text-sm text-[#64748B]">
+              <p>Milestone: {selectedMilestone?.title}</p>
+              <p>Amount: ₦{selectedMilestone?.escrow?.amount.toLocaleString()}</p>
+              <p>Status: {selectedMilestone?.status}</p>
+            </div>
+          </div>
+
+          {selectedMilestone?.status !== 'approved' && (
+            <div className="bg-[#FEF3C7] rounded-lg p-3 border border-[#F59E0B]/20">
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={adminOverride}
+                  onChange={(e) => setAdminOverride(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-[#E5E7EB] text-[#1E3A8A] focus:ring-[#1E3A8A]"
+                />
+                <span className="text-xs text-[#334155]">
+                  Override client approval requirement
+                </span>
+              </label>
+            </div>
+          )}
+
+          {isLoadingAccounts ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1E3A8A] mx-auto mb-2"></div>
+              <p className="text-sm text-[#64748B]">Loading company payment accounts...</p>
+            </div>
+          ) : companyAccounts.length === 0 ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm text-yellow-800 mb-2">
+                Company has no payment accounts linked. Please ask them to add a payment account in their settings.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-2">
+                Select Company Payment Account <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={selectedAccountId}
+                onChange={(e) => setSelectedAccountId(e.target.value)}
+                options={companyAccounts.map(acc => ({
+                  value: acc.id,
+                  label: `${acc.account_name} - ${acc.account_number}${acc.is_default ? ' (Default)' : ''}`,
+                }))}
+                placeholder="Select payment account"
+                required
+              />
+              {selectedAccountId && (
+                <div className="mt-3 p-3 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]">
+                  {(() => {
+                    const account = companyAccounts.find(acc => acc.id === selectedAccountId);
+                    return account ? (
+                      <div className="text-sm text-[#64748B]">
+                        <p><strong>Account:</strong> {account.account_name}</p>
+                        <p><strong>Number:</strong> {account.account_number}</p>
+                        <p><strong>Bank:</strong> {account.bank_name || `Code: ${account.bank_code}`}</p>
+                        {account.is_verified && (
+                          <p className="text-green-600 mt-1">✓ Verified</p>
+                        )}
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="bg-[#D1FAE5] rounded-lg p-4 border border-[#16A34A]/20">
+            <p className="text-sm text-[#334155] mb-2">
+              <strong>This action will:</strong>
+            </p>
+            <ul className="space-y-1 text-sm text-[#64748B]">
+              <li>• Transfer funds from escrow to company account</li>
+              <li>• Mark milestone as released</li>
+              <li>• Update escrow status</li>
+              <li>• Notify both parties</li>
+            </ul>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
