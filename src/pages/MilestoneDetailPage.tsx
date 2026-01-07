@@ -468,37 +468,34 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-6">
                   {videoEvidence.map((video) => {
                     const videoUrl = video.url || video.file_path;
                     return (
                       <div
                         key={video.id}
-                        className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]"
+                        className="space-y-2"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-[#1E3A8A] rounded-lg flex items-center justify-center">
-                            <Video className="w-5 h-5 text-white" />
+                        {video.description && (
+                          <p className="text-sm font-medium text-[#334155]">
+                            {video.description}
+                          </p>
+                        )}
+                        {videoUrl ? (
+                          <div className="rounded-lg overflow-hidden bg-[#000] border border-[#E5E7EB]">
+                            <video
+                              src={getFileUrl(videoUrl)}
+                              controls
+                              className="w-full max-h-[600px]"
+                              preload="metadata"
+                            >
+                              Your browser does not support the video tag.
+                            </video>
                           </div>
-                          <div>
-                            <span className="text-sm text-[#334155] block">
-                              {video.description || 'Video evidence'}
-                            </span>
-                            {videoUrl && (
-                              <span className="text-xs text-[#64748B]">
-                                {videoUrl.includes('/') ? videoUrl.split('/').pop()?.split('?')[0] : 'Video'}
-                              </span>
-                            )}
+                        ) : (
+                          <div className="w-full aspect-video flex items-center justify-center bg-[#F8FAFC] rounded-lg border border-[#E5E7EB] text-[#64748B]">
+                            Video not available
                           </div>
-                        </div>
-                        {videoUrl && (
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => window.open(getFileUrl(videoUrl), '_blank')}
-                          >
-                            View
-                          </Button>
                         )}
                       </div>
                     );
