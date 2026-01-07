@@ -23,6 +23,7 @@ import { AdminCompanyReviewPage } from './pages/AdminCompanyReviewPage';
 import { AdminDisputesListPage } from './pages/AdminDisputesListPage';
 import { AdminDisputePage } from './pages/AdminDisputePage';
 import { AdminEscrowPage } from './pages/AdminEscrowPage';
+import { AdminPlatformSettingsPage } from './pages/AdminPlatformSettingsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 
@@ -128,6 +129,10 @@ function TransactionsWrapper({ userRole }: { userRole?: UserRole }) {
   return <TransactionsPage onNavigate={navigate} userRole={userRole} />;
     }
     
+function AdminPlatformSettingsWrapper() {
+  return <AdminPlatformSettingsPage />;
+    }
+    
 // Public route wrapper
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -226,6 +231,7 @@ export default function App() {
         <Route path="/admin/escrow" element={<ProtectedRoute><AdminEscrowPage /></ProtectedRoute>} />
         <Route path="/admin/disputes" element={<ProtectedRoute><AdminDisputesListWrapper /></ProtectedRoute>} />
         <Route path="/admin/disputes/:id" element={<ProtectedRoute><AdminDisputeWrapper /></ProtectedRoute>} />
+        <Route path="/admin/platform-settings" element={<ProtectedRoute><AdminPlatformSettingsWrapper /></ProtectedRoute>} />
         
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

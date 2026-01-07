@@ -53,6 +53,8 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
         return <ArrowDownCircle className="w-4 h-4 text-orange-600" />;
       case 'consultation_payment':
         return <CreditCard className="w-4 h-4 text-purple-600" />;
+      case 'platform_fee':
+        return <DollarSign className="w-4 h-4 text-yellow-600" />;
       default:
         return <Receipt className="w-4 h-4 text-gray-600" />;
     }
@@ -68,6 +70,8 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
         return 'Escrow Refund';
       case 'consultation_payment':
         return 'Consultation Payment';
+      case 'platform_fee':
+        return 'Platform Fee';
       default:
         return type;
     }
@@ -92,11 +96,11 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
     } else if (userRole === 'company') {
       switch (type) {
         case 'escrow_release':
+        case 'consultation_payment':
           return 'text-green-600'; // Money coming in
         case 'escrow_refund':
           return 'text-red-600'; // Money not received (refunded)
         case 'escrow_deposit':
-        case 'consultation_payment':
           return 'text-blue-600'; // Not directly relevant but shown for context
         default:
           return 'text-gray-600';
@@ -111,6 +115,8 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
           return 'text-green-600'; // Company received
         case 'escrow_refund':
           return 'text-orange-600'; // Refunded
+        case 'platform_fee':
+          return 'text-yellow-600'; // Platform fee received
         default:
           return 'text-gray-600';
       }
@@ -201,15 +207,31 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
           // Company: releases are incoming, refunds are outgoing
           isOutgoing = transaction.type === 'escrow_refund';
         } else {
-          // Admin: show with + for releases/refunds, - for deposits/payments
+          // Admin: show with + for releases/refunds/platform fees, - for deposits/payments
           isOutgoing = transaction.type === 'escrow_deposit' || transaction.type === 'consultation_payment';
         }
         
+        // Show breakdown if available
+        const showBreakdown = (transaction.platform_fee && transaction.platform_fee > 0) || 
+                             (transaction.total_amount && transaction.total_amount !== transaction.amount);
+        
         return (
-          <div className="flex items-center gap-1">
+          <div className="flex flex-col gap-1">
             <span className={`font-semibold ${getAmountColor(transaction.type)}`}>
               {isOutgoing ? '-' : '+'}₦{transaction.amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
+            {showBreakdown && transaction.total_amount && (
+              <div className="text-xs text-[#64748B]">
+                {transaction.type === 'platform_fee' ? (
+                  <span>From: ₦{transaction.total_amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                ) : transaction.platform_fee && transaction.platform_fee > 0 ? (
+                  <span>
+                    Total: ₦{transaction.total_amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} • 
+                    Fee: ₦{transaction.platform_fee.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                ) : null}
+              </div>
+            )}
           </div>
         );
       },

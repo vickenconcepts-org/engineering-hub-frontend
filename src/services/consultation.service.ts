@@ -35,6 +35,9 @@ export interface Consultation {
   scheduled_at: string;
   duration_minutes: number;
   price: number;
+  platform_fee?: number;
+  net_amount?: number;
+  platform_fee_percentage?: number;
   payment_status: 'pending' | 'paid' | 'refunded';
   meeting_link?: string | null;
   status: 'scheduled' | 'completed' | 'cancelled';
@@ -69,7 +72,7 @@ export interface CreateConsultationData {
   company_id: string; // UUID
   scheduled_at: string; // ISO datetime string
   duration_minutes?: number; // Optional, defaults to 30
-  price: number;
+  // price is no longer sent - backend uses company's consultation_fee
 }
 
 /**

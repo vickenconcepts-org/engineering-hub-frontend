@@ -231,11 +231,31 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                   
                   <div className="flex items-start gap-3">
                     <DollarSign className="w-5 h-5 text-[#64748B] mt-0.5" />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
                         Consultation Fee
                       </p>
                       <p className="text-sm text-[#334155]">₦{consultation.price.toLocaleString()}</p>
+                      {consultation.platform_fee && consultation.platform_fee > 0 && consultation.is_paid && (
+                        <div className="mt-2 pt-2 border-t border-[#E5E7EB] space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-[#64748B]">
+                              Platform Fee ({consultation.platform_fee_percentage || 0}%)
+                            </span>
+                            <span className="text-xs font-medium text-[#F97316]">
+                              -₦{consultation.platform_fee.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center pt-1">
+                            <span className="text-xs font-medium text-[#334155]">
+                              {userRole === 'client' ? 'Amount to Company' : 'Amount You\'ll Receive'}
+                            </span>
+                            <span className="text-xs font-bold text-[#334155]">
+                              ₦{(consultation.net_amount || (consultation.price - consultation.platform_fee)).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -457,11 +477,33 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-[#64748B]">Consultation Fee</span>
-                  <span className="text-sm font-medium text-[#334155]">
-                    ₦{consultation.price.toLocaleString()}
-                  </span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-[#64748B]">Consultation Fee</span>
+                    <span className="text-sm font-medium text-[#334155]">
+                      ₦{consultation.price.toLocaleString()}
+                    </span>
+                  </div>
+                  {consultation.platform_fee && consultation.platform_fee > 0 && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-[#64748B]">
+                          Platform Fee ({consultation.platform_fee_percentage || 0}%)
+                        </span>
+                        <span className="text-xs font-medium text-[#F97316]">
+                          -₦{consultation.platform_fee.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-[#E5E7EB]">
+                        <span className="text-sm font-medium text-[#334155]">
+                          {userRole === 'client' ? 'Amount to Company' : 'Amount You\'ll Receive'}
+                        </span>
+                        <span className="text-sm font-bold text-[#334155]">
+                          ₦{(consultation.net_amount || (consultation.price - consultation.platform_fee)).toLocaleString()}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <p className="text-xs text-[#64748B] mt-1">
                   Paid to {consultation.company?.company_name || 'the company'} for consultation services

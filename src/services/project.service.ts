@@ -16,6 +16,9 @@ export interface Milestone {
     id: string; // UUID
     milestone_id: string; // UUID
     amount: number;
+    platform_fee?: number;
+    net_amount?: number;
+    platform_fee_percentage?: number;
     status: 'held' | 'released' | 'refunded';
     created_at: string;
     released_at?: string;
@@ -24,7 +27,9 @@ export interface Milestone {
     id: string; // UUID
     milestone_id: string; // UUID
     type: 'image' | 'video' | 'text';
-    file_path?: string;
+    file_path?: string; // Legacy - kept for backward compatibility
+    url?: string; // Cloudinary URL
+    thumbnail_url?: string; // For videos
     description?: string;
     created_at: string;
   }>;

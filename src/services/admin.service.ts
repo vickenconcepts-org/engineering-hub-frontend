@@ -244,6 +244,24 @@ export const adminService = {
   },
 
   /**
+   * Get platform fee percentage
+   */
+  async getPlatformFee(): Promise<{ percentage: number; description?: string }> {
+    const response = await apiClient.get<ApiResponse<{ percentage: number; description?: string }>>('/admin/platform-settings/fee');
+    return extractData(response);
+  },
+
+  /**
+   * Update platform fee percentage
+   */
+  async updatePlatformFee(percentage: number): Promise<{ percentage: number; description?: string }> {
+    const response = await apiClient.put<ApiResponse<{ percentage: number; description?: string }>>('/admin/platform-settings/fee', {
+      percentage,
+    });
+    return extractData(response);
+  },
+
+  /**
    * Release escrow funds
    */
   async releaseEscrow(id: string, data: ReleaseEscrowData): Promise<any> {

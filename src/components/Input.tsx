@@ -36,18 +36,18 @@ export function Input({
         </label>
       )}
       <div className="relative">
-        <input
-          id={inputId}
+      <input
+        id={inputId}
           type={inputType}
-          className={`w-full px-4 py-2 rounded-lg border ${
-            error
-              ? 'border-[#DC2626] focus:border-[#DC2626] focus:ring-[#DC2626]'
-              : 'border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-[#1E3A8A]'
+        className={`w-full px-4 py-2 rounded-lg border ${
+          error
+            ? 'border-[#DC2626] focus:border-[#DC2626] focus:ring-[#DC2626]'
+            : 'border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-[#1E3A8A]'
           } focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors text-sm text-[#334155] placeholder:text-[#64748B] ${
             isPassword ? 'pr-10' : ''
           } ${className}`}
-          {...props}
-        />
+        {...props}
+      />
         {isPassword && (
           <button
             type="button"

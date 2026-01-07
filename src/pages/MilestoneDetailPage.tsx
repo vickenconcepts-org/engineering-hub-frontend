@@ -427,29 +427,32 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
-                  {photoEvidence.map((photo) => (
-                    <div key={photo.id} className="space-y-2">
-                      <div className="aspect-video rounded-lg overflow-hidden bg-[#F8FAFC] border border-[#E5E7EB]">
-                        {photo.file_path ? (
-                          <img
-                            src={getFileUrl(photo.file_path)}
-                            alt={photo.description || 'Evidence photo'}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/800x450?text=Image+Not+Available';
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[#64748B]">
-                            No image available
-                          </div>
+                  {photoEvidence.map((photo) => {
+                    const imageUrl = photo.url || photo.file_path;
+                    return (
+                      <div key={photo.id} className="space-y-2">
+                        <div className="aspect-video rounded-lg overflow-hidden bg-[#F8FAFC] border border-[#E5E7EB]">
+                          {imageUrl ? (
+                            <img
+                              src={getFileUrl(imageUrl)}
+                              alt={photo.description || 'Evidence photo'}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/800x450?text=Image+Not+Available';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[#64748B]">
+                              No image available
+                            </div>
+                          )}
+                        </div>
+                        {photo.description && (
+                          <p className="text-xs text-[#64748B]">{photo.description}</p>
                         )}
                       </div>
-                      {photo.description && (
-                        <p className="text-xs text-[#64748B]">{photo.description}</p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -466,37 +469,40 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {videoEvidence.map((video) => (
-                    <div
-                      key={video.id}
-                      className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#1E3A8A] rounded-lg flex items-center justify-center">
-                          <Video className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <span className="text-sm text-[#334155] block">
-                            {video.description || 'Video evidence'}
-                          </span>
-                          {video.file_path && (
-                            <span className="text-xs text-[#64748B]">
-                              {video.file_path.split('/').pop()}
+                  {videoEvidence.map((video) => {
+                    const videoUrl = video.url || video.file_path;
+                    return (
+                      <div
+                        key={video.id}
+                        className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-[#1E3A8A] rounded-lg flex items-center justify-center">
+                            <Video className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <span className="text-sm text-[#334155] block">
+                              {video.description || 'Video evidence'}
                             </span>
-                          )}
+                            {videoUrl && (
+                              <span className="text-xs text-[#64748B]">
+                                {videoUrl.includes('/') ? videoUrl.split('/').pop()?.split('?')[0] : 'Video'}
+                              </span>
+                            )}
+                          </div>
                         </div>
+                        {videoUrl && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={() => window.open(getFileUrl(videoUrl), '_blank')}
+                          >
+                            View
+                          </Button>
+                        )}
                       </div>
-                      {video.file_path && (
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          onClick={() => window.open(getFileUrl(video.file_path), '_blank')}
-                        >
-                          View
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -539,6 +545,26 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                         ₦{milestone.escrow.amount.toLocaleString()}
                       </span>
                     </div>
+                    {milestone.escrow.platform_fee && milestone.escrow.platform_fee > 0 && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-[#64748B]">
+                            Platform Fee ({milestone.escrow.platform_fee_percentage || 0}%)
+                          </span>
+                          <span className="text-sm font-medium text-[#F97316]">
+                            -₦{milestone.escrow.platform_fee.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-[#E5E7EB]">
+                          <span className="text-xs font-medium text-[#334155]">
+                            {userRole === 'client' ? 'Amount to Company' : 'Amount You\'ll Receive'}
+                          </span>
+                          <span className="text-sm font-bold text-[#334155]">
+                            ₦{(milestone.escrow.net_amount || (milestone.escrow.amount - milestone.escrow.platform_fee)).toLocaleString()}
+                          </span>
+                        </div>
+                      </>
+                    )}
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-[#64748B]">Escrow Status</span>
                       <StatusBadge status={milestone.escrow.status} />
@@ -629,8 +655,21 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-[#64748B] mb-4">
-                  Fund the escrow for this milestone to proceed.
+                  Fund the escrow for this milestone to proceed. A platform fee will be deducted when funds are released.
                 </p>
+                <div className="bg-[#F8F9FA] border border-[#E5E7EB] rounded-lg p-4 mb-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-[#64748B]">Milestone Amount</span>
+                      <span className="text-sm font-medium text-[#334155]">
+                        ₦{milestone.amount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="text-xs text-[#64748B] pt-2 border-t border-[#E5E7EB]">
+                      <p>Note: A platform fee (5-8%) will be deducted from the escrow amount when funds are released to the company.</p>
+                    </div>
+                  </div>
+                </div>
                 <Button
                   fullWidth
                   onClick={async () => {

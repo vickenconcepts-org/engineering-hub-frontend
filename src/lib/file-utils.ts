@@ -12,17 +12,23 @@ const getBackendBaseUrl = (): string => {
 };
 
 /**
- * Get full URL for a file stored in Laravel public storage
- * Files are stored in storage/app/public and symlinked to public/storage
+ * Get full URL for a file
+ * Supports both Cloudinary URLs (full URLs) and local storage paths
  * 
- * @param filePath - Relative path from storage/app/public (e.g., "milestones/1/evidence/photo.jpg")
+ * @param filePathOrUrl - Cloudinary URL (https://...) or relative path from storage/app/public
  * @returns Full URL to access the file
  */
-export const getFileUrl = (filePath: string | null | undefined): string => {
-  if (!filePath) return '';
+export const getFileUrl = (filePathOrUrl: string | null | undefined): string => {
+  if (!filePathOrUrl) return '';
   
+  // If it's already a full URL (Cloudinary), return as-is
+  if (filePathOrUrl.startsWith('http://') || filePathOrUrl.startsWith('https://')) {
+    return filePathOrUrl;
+  }
+  
+  // Otherwise, treat as local storage path
   // Remove leading slash if present
-  const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
+  const cleanPath = filePathOrUrl.startsWith('/') ? filePathOrUrl.slice(1) : filePathOrUrl;
   
   // Construct URL - Laravel serves files from /storage/{path}
   return `${getBackendBaseUrl()}/storage/${cleanPath}`;
