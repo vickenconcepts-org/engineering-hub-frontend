@@ -12,6 +12,15 @@ export interface Milestone {
   amount: number;
   sequence_order: number;
   status: 'pending' | 'funded' | 'submitted' | 'approved' | 'rejected' | 'released';
+  verified_at?: string; // ISO date string
+  verified_by?: string; // UUID of user who verified
+  client_notes?: string; // Notes from client
+  company_notes?: string; // Notes from company
+  verifier?: {
+    id: string;
+    name: string;
+    email: string;
+  };
   escrow?: {
     id: string; // UUID
     milestone_id: string; // UUID

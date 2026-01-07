@@ -152,7 +152,7 @@ export function CreateMilestonesPage({ userRole }: CreateMilestonesPageProps) {
       }));
       
       await projectService.createMilestones(projectId, milestonesData);
-      toast.success('Milestones created successfully! Project is now active.');
+      toast.success('Milestones created successfully! The project will become active once the client verifies all milestones.');
       navigate(`/projects/${projectId}`);
     } catch (error) {
       console.error('Failed to create milestones:', error);
@@ -201,7 +201,7 @@ export function CreateMilestonesPage({ userRole }: CreateMilestonesPageProps) {
           </button>
           <h1 className="text-2xl font-semibold text-[#334155]">Create Milestones</h1>
           <p className="text-sm text-[#64748B] mt-1">
-            Define project milestones for {project.title}
+            Define project milestones for {project.title}. The project will become active once the client verifies all milestones.
           </p>
         </div>
       </div>
@@ -348,7 +348,7 @@ export function CreateMilestonesPage({ userRole }: CreateMilestonesPageProps) {
             disabled={isSaving}
             className="bg-[#1E3A8A] text-white"
           >
-            {isSaving ? 'Creating...' : 'Create Milestones & Activate Project'}
+            {isSaving ? 'Creating...' : 'Create Milestones'}
           </Button>
         </div>
       </form>

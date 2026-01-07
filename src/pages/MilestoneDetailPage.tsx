@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Image as ImageIcon, Video, CheckCircle, X } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon, Video, CheckCircle, X, MessageSquare } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
@@ -44,6 +44,10 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
   const [milestone, setMilestone] = useState<Milestone | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [notesModalOpen, setNotesModalOpen] = useState(false);
+  const [verificationNotes, setVerificationNotes] = useState('');
+  const [milestoneNotes, setMilestoneNotes] = useState('');
   
   // Extract milestone ID and project ID from URL
   const milestoneId = window.location.pathname.split('/milestones/')[1]?.split('#')[0] || '';
@@ -272,6 +276,58 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
       setIsProcessing(false);
     }
   };
+
+  const handleVerifyMilestone = async () => {
+    if (!milestone) return;
+    
+    setIsProcessing(true);
+    try {
+      await milestoneService.verify(milestone.id, verificationNotes || undefined);
+      toast.success('Milestone verified successfully!');
+      setVerifyModalOpen(false);
+      setVerificationNotes('');
+      await loadMilestone(); // Reload to check if project should be activated
+    } catch (error) {
+      console.error('Failed to verify milestone:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleUpdateNotes = async () => {
+    if (!milestone) return;
+    
+    setIsProcessing(true);
+    try {
+      if (userRole === 'client') {
+        await milestoneService.updateClientNotes(milestone.id, milestoneNotes);
+      } else if (userRole === 'company') {
+        await milestoneService.updateCompanyNotes(milestone.id, milestoneNotes);
+      }
+      toast.success('Notes updated successfully!');
+      setNotesModalOpen(false);
+      setMilestoneNotes('');
+      await loadMilestone();
+    } catch (error) {
+      console.error('Failed to update notes:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const openVerifyModal = () => {
+    setVerificationNotes(milestone?.client_notes || '');
+    setVerifyModalOpen(true);
+  };
+
+  const openNotesModal = () => {
+    if (userRole === 'client') {
+      setMilestoneNotes(milestone?.client_notes || '');
+    } else if (userRole === 'company') {
+      setMilestoneNotes(milestone?.company_notes || '');
+    }
+    setNotesModalOpen(true);
+  };
   
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -398,7 +454,23 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                       <p className="text-sm text-[#334155] capitalize">{milestone.escrow.status}</p>
                     </div>
                   )}
+                  
+                  {milestone.verified_at && (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                        Verified Date
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-[#16A34A]" />
+                        <p className="text-sm text-[#334155]">{formatDate(milestone.verified_at)}</p>
+                      </div>
+                      {milestone.verifier && (
+                        <p className="text-xs text-[#64748B] mt-1">by {milestone.verifier.name}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
+                
                 
                 {textEvidence.length > 0 && (
                   <div>
@@ -582,6 +654,29 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
             </CardContent>
           </Card>
           
+          {/* Client: Verify Milestone (for draft projects) */}
+          {userRole === 'client' && project?.status === 'draft' && !milestone.verified_at && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Verify Milestone</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-[#64748B] mb-4">
+                  Verify this milestone to proceed. The project will become active once all milestones are verified.
+                </p>
+                <Button
+                  fullWidth
+                  variant="primary"
+                  onClick={openVerifyModal}
+                  disabled={isProcessing}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Verify Milestone
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Client Actions */}
           {userRole === 'client' && milestone.status === 'submitted' && (
             <Card>
@@ -616,6 +711,52 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                     disabled={isProcessing}
                   >
                     Open Dispute
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Notes Section - Available for both client and company */}
+          {(userRole === 'client' || userRole === 'company') && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Notes & Annotations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {milestone.client_notes && (
+                    <div className="p-3 bg-[#EFF6FF] rounded-lg border border-[#3B82F6]/20">
+                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1 font-medium">
+                        Client Notes
+                      </p>
+                      <p className="text-sm text-[#334155] whitespace-pre-wrap">{milestone.client_notes}</p>
+                    </div>
+                  )}
+                  
+                  {milestone.company_notes && (
+                    <div className="p-3 bg-[#F0FDF4] rounded-lg border border-[#16A34A]/20">
+                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1 font-medium">
+                        Company Notes
+                      </p>
+                      <p className="text-sm text-[#334155] whitespace-pre-wrap">{milestone.company_notes}</p>
+                    </div>
+                  )}
+                  
+                  {!milestone.client_notes && !milestone.company_notes && (
+                    <p className="text-sm text-[#64748B]">
+                      No notes added yet. Add notes to communicate with the {userRole === 'client' ? 'company' : 'client'}.
+                    </p>
+                  )}
+                  
+                  <Button
+                    fullWidth
+                    variant="outline"
+                    onClick={openNotesModal}
+                    disabled={isProcessing}
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    {milestone.client_notes || milestone.company_notes ? 'Update Notes' : 'Add Notes'}
                   </Button>
                 </div>
               </CardContent>
@@ -1547,6 +1688,127 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
           </div>
         </Modal>
       )}
+
+      {/* Verify Milestone Modal */}
+      <Modal
+        isOpen={verifyModalOpen}
+        onClose={() => {
+          setVerifyModalOpen(false);
+          setVerificationNotes('');
+        }}
+        title="Verify Milestone"
+      >
+        {milestone && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-[#64748B] mb-2">Milestone:</p>
+              <p className="font-medium text-[#334155]">{milestone.title}</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-2">
+                Notes (Optional)
+              </label>
+              <Textarea
+                value={verificationNotes}
+                onChange={(e) => setVerificationNotes(e.target.value)}
+                placeholder="Add any notes or comments about this milestone..."
+                rows={4}
+              />
+            </div>
+            
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setVerifyModalOpen(false);
+                  setVerificationNotes('');
+                }}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleVerifyMilestone}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Verifying...' : 'Verify Milestone'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Notes Modal */}
+      <Modal
+        isOpen={notesModalOpen}
+        onClose={() => {
+          setNotesModalOpen(false);
+          setMilestoneNotes('');
+        }}
+        title={`${userRole === 'client' ? 'Client' : 'Company'} Notes`}
+      >
+        {milestone && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-[#64748B] mb-2">Milestone:</p>
+              <p className="font-medium text-[#334155]">{milestone.title}</p>
+            </div>
+            
+            {/* Show existing notes from both parties */}
+            {milestone.client_notes && (
+              <div className="p-3 bg-[#EFF6FF] rounded-lg border border-[#3B82F6]/20">
+                <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                  Client Notes
+                </p>
+                <p className="text-sm text-[#334155] whitespace-pre-wrap">{milestone.client_notes}</p>
+              </div>
+            )}
+            
+            {milestone.company_notes && (
+              <div className="p-3 bg-[#F0FDF4] rounded-lg border border-[#16A34A]/20">
+                <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                  Company Notes
+                </p>
+                <p className="text-sm text-[#334155] whitespace-pre-wrap">{milestone.company_notes}</p>
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-2">
+                {userRole === 'client' ? 'Your Notes' : 'Company Notes'}
+              </label>
+              <Textarea
+                value={milestoneNotes}
+                onChange={(e) => setMilestoneNotes(e.target.value)}
+                placeholder={`Add your notes or comments about this milestone...`}
+                rows={4}
+              />
+            </div>
+            
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setNotesModalOpen(false);
+                  setMilestoneNotes('');
+                }}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleUpdateNotes}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Saving...' : 'Save Notes'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

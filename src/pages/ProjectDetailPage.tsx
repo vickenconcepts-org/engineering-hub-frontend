@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Building2, DollarSign, Calendar, MapPin, CheckCircle, Clock, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, Building2, DollarSign, Calendar, MapPin, CheckCircle, Clock, AlertCircle, X, MessageSquare } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
+import { Modal } from '../components/Modal';
+import { Textarea } from '../components/Textarea';
 import { projectService, Project } from '../services/project.service';
 import { milestoneService } from '../services/milestone.service';
 import { Milestone } from '../services/project.service';
@@ -20,6 +22,12 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'escrow'>('overview');
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [notesModalOpen, setNotesModalOpen] = useState(false);
+  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
+  const [verificationNotes, setVerificationNotes] = useState('');
+  const [milestoneNotes, setMilestoneNotes] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
   
   useEffect(() => {
     if (projectId) {
@@ -103,6 +111,62 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
     } catch (error) {
       console.error('Failed to fund milestone:', error);
     }
+  };
+
+  const handleVerifyMilestone = async () => {
+    if (!selectedMilestone) return;
+    
+    setIsProcessing(true);
+    try {
+      await milestoneService.verify(selectedMilestone.id, verificationNotes || undefined);
+      toast.success('Milestone verified successfully!');
+      setVerifyModalOpen(false);
+      setVerificationNotes('');
+      setSelectedMilestone(null);
+      await loadProject(); // Reload to check if project should be activated
+    } catch (error) {
+      console.error('Failed to verify milestone:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleUpdateNotes = async () => {
+    if (!selectedMilestone) return;
+    
+    setIsProcessing(true);
+    try {
+      if (userRole === 'client') {
+        await milestoneService.updateClientNotes(selectedMilestone.id, milestoneNotes);
+      } else if (userRole === 'company') {
+        await milestoneService.updateCompanyNotes(selectedMilestone.id, milestoneNotes);
+      }
+      toast.success('Notes updated successfully!');
+      setNotesModalOpen(false);
+      setMilestoneNotes('');
+      setSelectedMilestone(null);
+      await loadProject();
+    } catch (error) {
+      console.error('Failed to update notes:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const openVerifyModal = (milestone: Milestone) => {
+    setSelectedMilestone(milestone);
+    setVerificationNotes(milestone.client_notes || '');
+    setVerifyModalOpen(true);
+  };
+
+  const openNotesModal = (milestone: Milestone) => {
+    setSelectedMilestone(milestone);
+    if (userRole === 'client') {
+      setMilestoneNotes(milestone.client_notes || '');
+    } else if (userRole === 'company') {
+      setMilestoneNotes(milestone.company_notes || '');
+    }
+    setNotesModalOpen(true);
   };
   
   const getMilestoneStatusIcon = (status: string) => {
@@ -351,6 +415,28 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
       
       {activeTab === 'milestones' && (
         <div className="space-y-4">
+          {/* Client: Verification Notice for Draft Projects */}
+          {userRole === 'client' && project?.status === 'draft' && milestones.length > 0 && (
+            <Card className="border-[#F59E0B] bg-[#FEF3C7]">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-[#334155] mb-1">
+                      Verify Milestones to Activate Project
+                    </p>
+                    <p className="text-sm text-[#64748B]">
+                      Please review and verify all milestones. The project will become active once all milestones are verified.
+                    </p>
+                    <div className="mt-2 text-xs text-[#64748B]">
+                      Verified: {milestones.filter(m => m.verified_at).length} / {milestones.length}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
           {/* Company: Create Milestones for Draft Projects */}
           {userRole === 'company' && project?.status === 'draft' && milestones.length === 0 && (
             <Card>
@@ -399,6 +485,31 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                             <p className="text-sm text-[#64748B]">{milestone.description}</p>
                           )}
                           
+                          {/* Show verification status */}
+                          {milestone.verified_at && (
+                            <div className="mt-2 flex items-center gap-2 text-xs text-[#16A34A]">
+                              <CheckCircle className="w-3 h-3" />
+                              <span>Verified on {new Date(milestone.verified_at).toLocaleDateString()}</span>
+                              {milestone.verifier && (
+                                <span className="text-[#64748B]">by {milestone.verifier.name}</span>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Show notes indicators */}
+                          {(milestone.client_notes || milestone.company_notes) && (
+                            <div className="mt-2 flex items-center gap-2 text-xs text-[#64748B]">
+                              <MessageSquare className="w-3 h-3" />
+                              <span>
+                                {milestone.client_notes && milestone.company_notes 
+                                  ? 'Both parties have notes' 
+                                  : milestone.client_notes 
+                                    ? 'Client has notes' 
+                                    : 'Company has notes'}
+                              </span>
+                            </div>
+                          )}
+                          
                           {/* Show rejection reason for companies */}
                           {userRole === 'company' && milestone.status === 'rejected' && milestoneDispute && (
                             <div className="mt-2 p-3 bg-[#FEF3C7] rounded-lg border border-[#F59E0B]/20">
@@ -430,7 +541,33 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                         ₦{milestone.amount.toLocaleString()}
                       </p>
                       <StatusBadge status={milestone.status} />
-                      {userRole === 'client' && milestone.status === 'pending' && !milestone.escrow && (
+                      
+                      {/* Client: Verify milestone (for draft projects) */}
+                      {userRole === 'client' && project?.status === 'draft' && !milestone.verified_at && (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          className="mt-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openVerifyModal(milestone);
+                          }}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Verify
+                        </Button>
+                      )}
+                      
+                      {/* Show verified badge */}
+                      {milestone.verified_at && (
+                        <div className="mt-2 flex items-center gap-1 text-xs text-[#16A34A]">
+                          <CheckCircle className="w-3 h-3" />
+                          Verified
+                        </div>
+                      )}
+                      
+                      {/* Client: Fund escrow (for active projects) */}
+                      {userRole === 'client' && project?.status === 'active' && milestone.status === 'pending' && !milestone.escrow && (
                         <Button
                           size="sm"
                           className="mt-2"
@@ -440,6 +577,22 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                           }}
                         >
                           Fund Escrow
+                        </Button>
+                      )}
+                      
+                      {/* Add Notes button */}
+                      {(userRole === 'client' || userRole === 'company') && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openNotesModal(milestone);
+                          }}
+                        >
+                          <MessageSquare className="w-4 h-4 mr-1" />
+                          Notes
                         </Button>
                       )}
                       {userRole === 'company' && milestone.status === 'rejected' && (
@@ -551,6 +704,131 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
           </Card>
         </div>
       )}
+
+      {/* Verify Milestone Modal */}
+      <Modal
+        isOpen={verifyModalOpen}
+        onClose={() => {
+          setVerifyModalOpen(false);
+          setSelectedMilestone(null);
+          setVerificationNotes('');
+        }}
+        title="Verify Milestone"
+      >
+        {selectedMilestone && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-[#64748B] mb-2">Milestone:</p>
+              <p className="font-medium text-[#334155]">{selectedMilestone.title}</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-2">
+                Notes (Optional)
+              </label>
+              <Textarea
+                value={verificationNotes}
+                onChange={(e) => setVerificationNotes(e.target.value)}
+                placeholder="Add any notes or comments about this milestone..."
+                rows={4}
+              />
+            </div>
+            
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setVerifyModalOpen(false);
+                  setSelectedMilestone(null);
+                  setVerificationNotes('');
+                }}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleVerifyMilestone}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Verifying...' : 'Verify Milestone'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Notes Modal */}
+      <Modal
+        isOpen={notesModalOpen}
+        onClose={() => {
+          setNotesModalOpen(false);
+          setSelectedMilestone(null);
+          setMilestoneNotes('');
+        }}
+        title={`${userRole === 'client' ? 'Client' : 'Company'} Notes`}
+      >
+        {selectedMilestone && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-[#64748B] mb-2">Milestone:</p>
+              <p className="font-medium text-[#334155]">{selectedMilestone.title}</p>
+            </div>
+            
+            {/* Show existing notes from both parties */}
+            {selectedMilestone.client_notes && (
+              <div className="p-3 bg-[#EFF6FF] rounded-lg border border-[#3B82F6]/20">
+                <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                  Client Notes
+                </p>
+                <p className="text-sm text-[#334155] whitespace-pre-wrap">{selectedMilestone.client_notes}</p>
+              </div>
+            )}
+            
+            {selectedMilestone.company_notes && (
+              <div className="p-3 bg-[#F0FDF4] rounded-lg border border-[#16A34A]/20">
+                <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
+                  Company Notes
+                </p>
+                <p className="text-sm text-[#334155] whitespace-pre-wrap">{selectedMilestone.company_notes}</p>
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-2">
+                {userRole === 'client' ? 'Your Notes' : 'Company Notes'}
+              </label>
+              <Textarea
+                value={milestoneNotes}
+                onChange={(e) => setMilestoneNotes(e.target.value)}
+                placeholder={`Add your notes or comments about this milestone...`}
+                rows={4}
+              />
+            </div>
+            
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setNotesModalOpen(false);
+                  setSelectedMilestone(null);
+                  setMilestoneNotes('');
+                }}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleUpdateNotes}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Saving...' : 'Save Notes'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

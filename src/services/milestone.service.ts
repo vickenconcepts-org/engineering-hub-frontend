@@ -95,5 +95,39 @@ export const milestoneService = {
     );
     return extractData(response);
   },
+
+  /**
+   * Verify a milestone - CLIENT ONLY
+   * Client verifies milestone before project becomes active
+   */
+  async verify(id: string, notes?: string): Promise<Milestone> {
+    const response = await apiClient.post<ApiResponse<Milestone>>(
+      `/client/milestones/${id}/verify`,
+      notes ? { notes } : {}
+    );
+    return extractData<Milestone>(response);
+  },
+
+  /**
+   * Update client notes on a milestone - CLIENT ONLY
+   */
+  async updateClientNotes(id: string, notes: string): Promise<Milestone> {
+    const response = await apiClient.put<ApiResponse<Milestone>>(
+      `/client/milestones/${id}/notes`,
+      { notes }
+    );
+    return extractData<Milestone>(response);
+  },
+
+  /**
+   * Update company notes on a milestone - COMPANY ONLY
+   */
+  async updateCompanyNotes(id: string, notes: string): Promise<Milestone> {
+    const response = await apiClient.put<ApiResponse<Milestone>>(
+      `/company/milestones/${id}/notes`,
+      { notes }
+    );
+    return extractData<Milestone>(response);
+  },
 };
 
