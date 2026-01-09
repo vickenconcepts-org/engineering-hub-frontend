@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Building2, MapPin, Phone, Mail, FileText, CheckCircle, X } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
+import { ArrowLeft, Building2, Phone, Mail, FileText, CheckCircle, X, Shield, User, Calendar } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { Textarea } from '../components/Textarea';
@@ -127,10 +126,12 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
   
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
-          <p className="text-sm text-[#64748B]">Loading company details...</p>
+      <div className="bg-[#F5F5F5] min-h-screen p-6">
+        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
+            <p className="text-sm text-[#64748B]">Loading company details...</p>
+          </div>
         </div>
       </div>
     );
@@ -138,86 +139,101 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
   
   if (!company) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent>
-            <div className="text-center py-12">
-              <p className="text-sm text-[#64748B]">Company not found</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="bg-[#F5F5F5] min-h-screen p-6">
+        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-12">
+          <div className="text-center">
+            <p className="text-sm text-[#64748B]">Company not found</p>
+          </div>
+        </div>
       </div>
     );
   }
   
   
   return (
-    <div className="space-y-6">
-      {/* Back Button */}
-      <button
-        onClick={() => onNavigate('/admin/companies')}
-        className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Companies
-      </button>
-      
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#334155] mb-2">
-            {company.company_name}
-          </h1>
-          <p className="text-sm text-[#64748B]">
-            Submitted: {formatDate(company.created_at)}
-          </p>
-          <div className="mt-2">
-            <StatusBadge status={company.status} color={getStatusColor(company.status)} />
+    <div className="bg-[#F5F5F5] min-h-screen p-6">
+      <div className="space-y-6">
+        {/* Back Button */}
+        <button
+          onClick={() => onNavigate('/admin/companies')}
+          className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155] transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Companies
+        </button>
+        
+        {/* Header */}
+        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
+                <Building2 className="w-7 h-7 text-[#1E3A8A]" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-[#334155] mb-2">
+                  {company.company_name}
+                </h1>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-2 text-sm text-[#64748B]">
+                    <Calendar className="w-4 h-4" />
+                    <span>Submitted: {formatDate(company.created_at)}</span>
+                  </div>
+                </div>
+                <StatusBadge status={company.status} color={getStatusColor(company.status)} />
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              {company.status === 'approved' && (
+                <Button
+                  variant="danger"
+                  onClick={() => setSuspendModalOpen(true)}
+                  disabled={isProcessing}
+                  className="bg-gradient-to-r from-[#DC2626] to-[#EF4444] hover:from-[#B91C1C] hover:to-[#DC2626] text-white shadow-md hover:shadow-lg transition-all"
+                >
+                  <X className="w-4 h-4 mr-1.5" />
+                  Suspend
+                </Button>
+              )}
+              {company.status === 'pending' && (
+                <>
+                  <Button
+                    variant="danger"
+                    onClick={() => setRejectModalOpen(true)}
+                    disabled={isProcessing}
+                    className="bg-gradient-to-r from-[#DC2626] to-[#EF4444] hover:from-[#B91C1C] hover:to-[#DC2626] text-white shadow-md hover:shadow-lg transition-all"
+                  >
+                    <X className="w-4 h-4 mr-1.5" />
+                    Reject
+                  </Button>
+                  <Button 
+                    onClick={() => setApproveModalOpen(true)}
+                    disabled={isProcessing}
+                    className="bg-gradient-to-r from-[#16A34A] to-[#22C55E] hover:from-[#15803D] hover:to-[#16A34A] text-white shadow-md hover:shadow-lg transition-all"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1.5" />
+                    Approve
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
-        
-        <div className="flex gap-3">
-          {company.status === 'approved' && (
-            <Button
-              variant="danger"
-              onClick={() => setSuspendModalOpen(true)}
-              disabled={isProcessing}
-            >
-              <X className="w-4 h-4" />
-              Suspend
-            </Button>
-          )}
-          {company.status === 'pending' && (
-            <>
-              <Button
-                variant="danger"
-                onClick={() => setRejectModalOpen(true)}
-                disabled={isProcessing}
-              >
-                <X className="w-4 h-4" />
-                Reject
-              </Button>
-              <Button 
-                onClick={() => setApproveModalOpen(true)}
-                disabled={isProcessing}
-              >
-                <CheckCircle className="w-4 h-4" />
-                Approve
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
       
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Company Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Company Information</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Company Information */}
+            <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+              <div className="p-6 border-b border-[#E5E7EB]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-[#1E3A8A]" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-[#334155]">Company Information</h2>
+                </div>
+              </div>
+              <div className="p-6">
               <div className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="flex items-start gap-3">
@@ -284,16 +300,21 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
-          
-          {/* License Documents */}
-          {company.license_documents && company.license_documents.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>License Documents</CardTitle>
-              </CardHeader>
-              <CardContent>
+              </div>
+            </div>
+            
+            {/* License Documents */}
+            {company.license_documents && company.license_documents.length > 0 && (
+              <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+                <div className="p-6 border-b border-[#E5E7EB]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-[#1E3A8A]" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-[#334155]">License Documents</h2>
+                  </div>
+                </div>
+                <div className="p-6">
                 <div className="space-y-3">
                   {company.license_documents.map((doc, index) => (
                     <div
@@ -308,23 +329,29 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                         size="sm" 
                         variant="ghost"
                         onClick={() => window.open(getFileUrl(doc), '_blank')}
+                        className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
                       >
                         View Document
                       </Button>
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Portfolio Links */}
-          {company.portfolio_links && company.portfolio_links.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Portfolio Links</CardTitle>
-              </CardHeader>
-              <CardContent>
+                </div>
+              </div>
+            )}
+            
+            {/* Portfolio Links */}
+            {company.portfolio_links && company.portfolio_links.length > 0 && (
+              <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+                <div className="p-6 border-b border-[#E5E7EB]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-[#1E3A8A]" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-[#334155]">Portfolio Links</h2>
+                  </div>
+                </div>
+                <div className="p-6">
                 <div className="space-y-3">
                   {company.portfolio_links.map((link, index) => (
                     <div
@@ -343,25 +370,31 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                         size="sm" 
                         variant="ghost"
                         onClick={() => window.open(link, '_blank')}
+                        className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
                       >
                         Visit
                       </Button>
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-        
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Company Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Company Status</CardTitle>
-            </CardHeader>
-            <CardContent>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Company Status */}
+            <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+              <div className="p-6 border-b border-[#E5E7EB]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-[#1E3A8A]" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-[#334155]">Company Status</h2>
+                </div>
+              </div>
+              <div className="p-6">
               <div className="space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
@@ -395,16 +428,21 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                   <p className="text-sm text-[#334155]">{formatDate(company.created_at)}</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          
-          {/* User Information */}
-          {company.user && (
-            <Card>
-              <CardHeader>
-                <CardTitle>User Information</CardTitle>
-              </CardHeader>
-              <CardContent>
+              </div>
+            </div>
+            
+            {/* User Information */}
+            {company.user && (
+              <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+                <div className="p-6 border-b border-[#E5E7EB]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
+                      <User className="w-5 h-5 text-[#1E3A8A]" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-[#334155]">User Information</h2>
+                  </div>
+                </div>
+                <div className="p-6">
                 <div className="space-y-4">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
@@ -429,11 +467,11 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       
       {/* Approve Modal */}
       <Modal
@@ -506,6 +544,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
           />
         </div>
       </Modal>
+      </div>
     </div>
   );
 }
