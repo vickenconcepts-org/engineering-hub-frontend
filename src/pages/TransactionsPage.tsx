@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
 import { Table, Pagination } from '../components/Table';
 import { StatusBadge } from '../components/StatusBadge';
 import { transactionService, Transaction } from '../services/transaction.service';
-import { Receipt, DollarSign, ArrowDownCircle, ArrowUpCircle, CreditCard, XCircle } from 'lucide-react';
+import { Receipt, DollarSign, ArrowDownCircle, ArrowUpCircle, CreditCard, XCircle, TrendingUp, CheckCircle2 } from 'lucide-react';
 
 interface TransactionsPageProps {
   onNavigate: (path: string) => void;
@@ -138,21 +137,25 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
       return 0;
     }
     return transactions.reduce((sum, t) => {
+      // Ensure amount is a valid number
+      const amount = typeof t.amount === 'number' ? t.amount : parseFloat(String(t.amount || 0));
+      const validAmount = isNaN(amount) || !isFinite(amount) ? 0 : amount;
+      
       if (userRole === 'client') {
         // Client: deposits and consultation payments are outgoing (negative), refunds are incoming (positive)
         if (t.type === 'escrow_deposit' || t.type === 'consultation_payment') {
-          return sum - t.amount;
+          return sum - validAmount;
         } else if (t.type === 'escrow_refund') {
-          return sum + t.amount;
+          return sum + validAmount;
         } else {
           return sum; // escrow_release doesn't change balance for client
         }
       } else if (userRole === 'company') {
         // Company: releases are incoming (positive), refunds are outgoing (negative)
         if (t.type === 'escrow_release') {
-          return sum + t.amount;
+          return sum + validAmount;
         } else if (t.type === 'escrow_refund') {
-          return sum - t.amount;
+          return sum - validAmount;
         } else {
           return sum; // deposits don't change balance for company
         }
@@ -268,113 +271,134 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
     },
   ];
 
+  const netAmount = calculateTotal();
+  const successfulCount = transactions.filter(t => t.status === 'success').length;
+  
+  // Ensure netAmount is a valid number
+  const validNetAmount = isNaN(netAmount) || !isFinite(netAmount) ? 0 : netAmount;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-[#334155] mb-2">Transaction History</h1>
-        <p className="text-sm text-[#64748B]">
-          {userRole === 'admin' 
-            ? 'View all transactions in the system'
-            : 'View your transaction history'}
-        </p>
-      </div>
+    <div className="bg-[#F5F5F5] min-h-screen p-6">
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-[#334155] mb-2">Transaction History</h1>
+          <p className="text-sm text-[#64748B]">
+            {userRole === 'admin' 
+              ? 'View all transactions in the system'
+              : 'View your transaction history'}
+          </p>
+        </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">Total Transactions</p>
-                <p className="text-2xl font-semibold text-[#334155]">{total}</p>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* First Card - Blue Gradient */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1E3A8A] to-[#1E40AF] shadow-lg">
+            <div className="p-6 text-white">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <p className="text-sm font-medium mb-2 opacity-90">Total Transactions</p>
+                  <p className="text-4xl font-bold mb-1">{total}</p>
+                  <div className="flex items-center gap-2 text-xs opacity-80 mt-2">
+                    <TrendingUp className="w-3 h-3" />
+                    <span>All time</span>
+                  </div>
+                </div>
+                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+                  <Receipt className="w-8 h-8 text-white" />
+                </div>
               </div>
-              <Receipt className="w-8 h-8 text-[#334155]" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+          {/* Second Card - White with Blue */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-[#E5E7EB]">
+            <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">Net Amount</p>
-                <p className={`text-2xl font-semibold ${calculateTotal() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {calculateTotal() >= 0 ? '+' : ''}₦{Math.abs(calculateTotal()).toLocaleString()}
+                <p className="text-sm font-medium text-[#1E3A8A] mb-2">Net Amount</p>
+                <p className={`text-3xl font-bold mb-1 ${validNetAmount >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
+                  {validNetAmount >= 0 ? '+' : ''}₦{Math.abs(validNetAmount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
+                <p className="text-xs text-[#64748B] mt-1">Total balance</p>
               </div>
-              <DollarSign className="w-8 h-8 text-[#334155]" />
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-[#1E3A8A]" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+          {/* Third Card - White with Green */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-[#E5E7EB]">
+            <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">Successful</p>
-                <p className="text-2xl font-semibold text-green-600">
-                  {transactions.filter(t => t.status === 'success').length}
+                <p className="text-sm font-medium text-[#1E3A8A] mb-2">Successful</p>
+                <p className="text-3xl font-bold mb-1 text-[#16A34A]">
+                  {successfulCount}
                 </p>
+                <p className="text-xs text-[#64748B] mt-1">Completed transactions</p>
               </div>
-              <Receipt className="w-8 h-8 text-green-600" />
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#16A34A]/10 to-[#22C55E]/10 flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6 text-[#16A34A]" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
+        {/* Filters */}
+        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
           <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-[#334155]">Filter by Type:</label>
+            <label className="text-sm font-semibold text-[#334155]">Filter by Type:</label>
             <select
               value={typeFilter}
               onChange={(e) => {
                 setTypeFilter(e.target.value as 'all' | 'escrow' | 'consultation');
                 setCurrentPage(1);
               }}
-              className="px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+              className="px-4 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] bg-white"
             >
               <option value="all">All Transactions</option>
               <option value="escrow">Escrow Only</option>
               <option value="consultation">Consultations Only</option>
             </select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Transactions Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Transactions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
-              <p className="text-sm text-[#64748B]">Loading transactions...</p>
-            </div>
-          ) : transactions.length === 0 ? (
-            <div className="text-center py-12">
-              <XCircle className="w-12 h-12 text-[#64748B] mx-auto mb-4" />
-              <p className="text-sm text-[#64748B]">No transactions found</p>
-            </div>
-          ) : (
-            <>
-              <Table columns={columns} data={transactions} />
-              {totalPages > 1 && (
-                <div className="mt-6">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={setCurrentPage}
-                  />
+        {/* Transactions Table */}
+        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+          <div className="p-6 border-b border-[#E5E7EB]">
+            <h2 className="text-lg font-semibold text-[#334155]">Transactions</h2>
+          </div>
+          <div className="p-6">
+            {isLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
+                <p className="text-sm text-[#64748B]">Loading transactions...</p>
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 rounded-full bg-[#F8FAFC] flex items-center justify-center mx-auto mb-4">
+                  <XCircle className="w-8 h-8 text-[#64748B]" />
                 </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+                <p className="text-sm font-medium text-[#334155] mb-1">No transactions found</p>
+                <p className="text-xs text-[#64748B]">Try adjusting your filters</p>
+              </div>
+            ) : (
+              <>
+                <Table columns={columns} data={transactions} />
+                {totalPages > 1 && (
+                  <div className="mt-6">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Building2, Upload, X, Plus, AlertCircle, CheckCircle, CreditCard, Trash2, Star } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
+import { Building2, Upload, X, Plus, AlertCircle, CheckCircle, CreditCard, Trash2, Star, Settings } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
@@ -348,29 +347,32 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
 
   // Payment Accounts JSX (inline to prevent re-creation on every render)
   const paymentAccountsJSX = (
-    <Card>
-      <CardHeader>
+    <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+      <div className="p-6 border-b border-[#E5E7EB]">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5" />
-            Payment Accounts
-          </CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
+              <CreditCard className="w-5 h-5 text-[#1E3A8A]" />
+            </div>
+            <h2 className="text-lg font-semibold text-[#334155]">Payment Accounts</h2>
+          </div>
           {!showAccountForm && (
             <Button
               variant="secondary"
               size="sm"
               onClick={() => setShowAccountForm(true)}
+              className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
             >
               <Plus className="w-4 h-4 mr-1" />
               Add Account
             </Button>
           )}
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="p-6">
         {showAccountForm && (
-          <form onSubmit={handleAddAccount} className="mb-6 p-4 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]">
-            <h3 className="text-sm font-medium text-[#334155] mb-4">Add Payment Account</h3>
+          <form onSubmit={handleAddAccount} className="mb-6 p-6 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]">
+            <h3 className="text-sm font-semibold text-[#334155] mb-4">Add Payment Account</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-xs uppercase tracking-wide text-[#64748B] mb-2">
@@ -414,6 +416,7 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
                     size="sm"
                     onClick={handleVerifyAccount}
                     disabled={!accountFormData.account_number || !accountFormData.bank_code || isVerifyingAccount}
+                    className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all disabled:opacity-50"
                   >
                     {isVerifyingAccount ? 'Verifying...' : 'Verify'}
                   </Button>
@@ -448,7 +451,13 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
               </div>
             </div>
             <div className="flex gap-2 mt-4">
-              <Button type="submit" variant="primary" size="sm" disabled={!accountFormData.account_name}>
+              <Button 
+                type="submit" 
+                variant="primary" 
+                size="sm" 
+                disabled={!accountFormData.account_name}
+                className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
+              >
                 Add Account
               </Button>
               <Button
@@ -478,11 +487,19 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
             <p className="text-sm text-[#64748B]">Loading accounts...</p>
           </div>
         ) : paymentAccounts.length === 0 ? (
-          <div className="text-center py-8">
-            <CreditCard className="w-12 h-12 text-[#64748B] mx-auto mb-2" />
-            <p className="text-sm text-[#64748B] mb-4">No payment accounts added yet</p>
+          <div className="text-center py-12">
+            <div className="w-16 h-16 rounded-full bg-[#F8FAFC] flex items-center justify-center mx-auto mb-4">
+              <CreditCard className="w-8 h-8 text-[#64748B]" />
+            </div>
+            <p className="text-sm font-medium text-[#334155] mb-1">No payment accounts added yet</p>
+            <p className="text-xs text-[#64748B] mb-4">Add a payment account to receive payments</p>
             {!showAccountForm && (
-              <Button variant="secondary" size="sm" onClick={() => setShowAccountForm(true)}>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => setShowAccountForm(true)}
+                className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 Add Your First Account
               </Button>
@@ -495,7 +512,7 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
                 key={account.id}
                 className={`p-4 rounded-lg border ${
                   account.is_default
-                    ? 'border-[#1E3A8A] bg-[#DBEAFE]'
+                    ? 'border-[#1E3A8A] bg-gradient-to-br from-[#1E3A8A]/5 to-[#2563EB]/5'
                     : 'border-[#E5E7EB] bg-white'
                 }`}
               >
@@ -504,13 +521,13 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
                     <div className="flex items-center gap-2 mb-1">
                       <p className="font-medium text-[#334155]">{account.account_name}</p>
                       {account.is_default && (
-                        <span className="px-2 py-0.5 bg-[#1E3A8A] text-white text-xs rounded-full flex items-center gap-1">
+                        <span className="px-2.5 py-1 bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] text-white text-xs rounded-lg flex items-center gap-1 font-medium">
                           <Star className="w-3 h-3" />
                           Default
                         </span>
                       )}
                       {account.is_verified && (
-                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                        <span className="px-2.5 py-1 bg-[#D1FAE5] text-[#065F46] border border-[#A7F3D0] text-xs rounded-lg font-medium">
                           Verified
                         </span>
                       )}
@@ -525,6 +542,7 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
                         variant="secondary"
                         size="sm"
                         onClick={() => handleSetDefault(account.id)}
+                        className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
                       >
                         Set Default
                       </Button>
@@ -533,6 +551,7 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
                       variant="secondary"
                       size="sm"
                       onClick={() => handleDeleteAccount(account.id)}
+                      className="hover:bg-[#FEE2E2] hover:text-[#DC2626]"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -542,33 +561,39 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 
   // Client/Admin settings
   if (userRole !== 'company') {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#334155] mb-2">Settings</h1>
-          <p className="text-sm text-[#64748B]">Manage your account settings</p>
+      <div className="bg-[#F5F5F5] min-h-screen p-6">
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold text-[#334155] mb-2">Settings</h1>
+            <p className="text-sm text-[#64748B]">Manage your account settings</p>
+          </div>
+          
+          {paymentAccountsJSX}
         </div>
-        
-        {paymentAccountsJSX}
       </div>
     );
   }
   
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#334155] mb-2">Company Profile</h1>
-        </div>
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
-          <p className="text-sm text-[#64748B]">Loading profile...</p>
+      <div className="bg-[#F5F5F5] min-h-screen p-6">
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold text-[#334155] mb-2">Company Profile</h1>
+          </div>
+          <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
+              <p className="text-sm text-[#64748B]">Loading profile...</p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -588,53 +613,61 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
   };
   
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-[#334155] mb-2">Company Profile</h1>
-        <p className="text-sm text-[#64748B]">
-          {profile 
-            ? 'Update your company profile information'
-            : 'Create your company profile to start receiving consultation requests'}
-        </p>
-      </div>
-      
-      {/* Profile Status Banner */}
-      {profile && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+    <div className="bg-[#F5F5F5] min-h-screen p-6">
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-[#334155] mb-2">Company Profile</h1>
+          <p className="text-sm text-[#64748B]">
+            {profile 
+              ? 'Update your company profile information'
+              : 'Create your company profile to start receiving consultation requests'}
+          </p>
+        </div>
+        
+        {/* Profile Status Banner */}
+        {profile && (
+          <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
+            <div className="flex items-center gap-3">
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                profile.is_approved 
+                  ? 'bg-gradient-to-br from-[#16A34A]/10 to-[#22C55E]/10' 
+                  : 'bg-gradient-to-br from-[#F59E0B]/10 to-[#FBBF24]/10'
+              }`}>
                 {profile.is_approved ? (
-                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <CheckCircle className="w-6 h-6 text-[#16A34A]" />
                 ) : (
-                  <AlertCircle className="w-5 h-5 text-yellow-600" />
+                  <AlertCircle className="w-6 h-6 text-[#F59E0B]" />
                 )}
-                <div>
-                  <p className="text-sm font-medium text-[#334155]">
-                    Status: <StatusBadge status={profile.status} color={getStatusColor(profile.status)} />
-                  </p>
-                  <p className="text-xs text-[#64748B] mt-1">
-                    {profile.is_approved 
-                      ? 'Your profile is verified and active'
-                      : profile.is_verified
-                      ? 'Your profile is verified and awaiting approval'
-                      : 'Your profile is pending admin review'}
-                  </p>
-                </div>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-[#334155] mb-1">
+                  Status: <StatusBadge status={profile.status} color={getStatusColor(profile.status)} />
+                </p>
+                <p className="text-xs text-[#64748B]">
+                  {profile.is_approved 
+                    ? 'Your profile is verified and active'
+                    : profile.is_verified
+                    ? 'Your profile is verified and awaiting approval'
+                    : 'Your profile is pending admin review'}
+                </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
       
-      {/* Profile Form */}
-      <form onSubmit={handleSubmit}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Company Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        {/* Profile Form */}
+        <form onSubmit={handleSubmit}>
+          <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+            <div className="p-6 border-b border-[#E5E7EB]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-[#1E3A8A]" />
+                </div>
+                <h2 className="text-lg font-semibold text-[#334155]">Company Information</h2>
+              </div>
+            </div>
+            <div className="p-6 space-y-6">
             {/* Company Name */}
             <div>
               <label className="block text-sm font-medium text-[#334155] mb-2">
@@ -711,7 +744,7 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
                     type="button"
                     variant="outline"
                     disabled={profile?.is_approved}
-                    className="cursor-pointer"
+                    className="cursor-pointer border-[#E5E7EB] hover:bg-[#F8FAFC]"
                   >
                     Choose Files
                   </Button>
@@ -867,30 +900,31 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
               )}
             </div>
             
-            {/* Submit Button */}
-            <div className="pt-4 border-t border-[#E5E7EB]">
-              {profile?.is_approved ? (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-sm text-yellow-800">
-                    Your profile has been approved. Contact admin to make changes.
-                  </p>
-                </div>
-              ) : (
-                <Button
-                  type="submit"
-                  disabled={isSaving}
-                  className="bg-[#1E3A8A] text-white"
-                >
-                  {isSaving ? 'Saving...' : profile ? 'Update Profile' : 'Create Profile'}
-                </Button>
-              )}
+              {/* Submit Button */}
+              <div className="pt-4 border-t border-[#E5E7EB]">
+                {profile?.is_approved ? (
+                  <div className="bg-[#FEF3C7] border border-[#FCD34D] rounded-lg p-4">
+                    <p className="text-sm text-[#92400E]">
+                      Your profile has been approved. Contact admin to make changes.
+                    </p>
+                  </div>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={isSaving}
+                    className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
+                  >
+                    {isSaving ? 'Saving...' : profile ? 'Update Profile' : 'Create Profile'}
+                  </Button>
+                )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </form>
-      
-      {/* Payment Accounts Section */}
-      {paymentAccountsJSX}
+          </div>
+        </form>
+        
+        {/* Payment Accounts Section */}
+        {paymentAccountsJSX}
+      </div>
     </div>
   );
 }

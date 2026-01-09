@@ -249,7 +249,7 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
   };
 
   return (
-    <div className="space-y-6 bg-[#F5F5F5] min-h-screen p-6">
+    <div className="space-y-6  min-h-screen">
       {/* Top Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* First Card - Blue Gradient */}

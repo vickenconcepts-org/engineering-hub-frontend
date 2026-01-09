@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Calendar, Clock, Video, FileText, ArrowLeft, DollarSign, CheckCircle } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
+import { Calendar, Clock, Video, FileText, ArrowLeft, DollarSign, CheckCircle, Building2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
@@ -130,17 +129,19 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
   
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 min-h-screen">
         <button
           onClick={() => navigate('/consultations')}
-          className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]"
+          className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155] mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Consultations
         </button>
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
-          <p className="text-sm text-[#64748B]">Loading consultation...</p>
+        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-8">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
+            <p className="text-sm text-[#64748B]">Loading consultation...</p>
+          </div>
         </div>
       </div>
     );
@@ -148,51 +149,56 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
   
   if (!consultation) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 min-h-screen">
         <button
           onClick={() => navigate('/consultations')}
-          className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]"
+          className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155] mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Consultations
         </button>
-        <Card>
-          <CardContent>
-            <div className="text-center py-12">
-              <p className="text-sm text-[#64748B]">Consultation not found</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-8">
+          <div className="text-center py-12">
+            <p className="text-sm text-[#64748B]">Consultation not found</p>
+          </div>
+        </div>
       </div>
     );
   }
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-screen">
       {/* Back Button */}
       <button
         onClick={() => navigate('/consultations')}
-        className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]"
+        className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155] transition-colors mb-2"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to Consultations
       </button>
       
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#334155] mb-2">
-            Consultation with {consultation.company?.company_name || 'Company'}
-          </h1>
-          <p className="text-sm text-[#64748B]">
-            Consultation ID: #{consultation.id}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <StatusBadge status={getStatusBadgeStatus(consultation.status)} />
-          <StatusBadge 
-            status={getPaymentStatusBadgeStatus(consultation.payment_status)} 
-          />
+      <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] flex items-center justify-center">
+              <Calendar className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-[#334155] mb-1">
+                Consultation with {consultation.company?.company_name || 'Company'}
+              </h1>
+              <p className="text-sm text-[#64748B]">
+                Consultation ID: {consultation.id.slice(0, 8)}...
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <StatusBadge status={getStatusBadgeStatus(consultation.status)} />
+            <StatusBadge 
+              status={getPaymentStatusBadgeStatus(consultation.payment_status)} 
+            />
+          </div>
         </div>
       </div>
       
@@ -200,43 +206,47 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Session Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Session Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
+            <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-[#1E3A8A]" />
+                <h3 className="text-lg font-semibold text-[#334155]">Session Details</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-[#64748B] mt-0.5" />
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                        Scheduled Date
-                    </p>
-                      <p className="text-sm text-[#334155]">{formatDate(consultation.scheduled_at)}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-[#1E3A8A]" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-[#64748B] mb-1">Scheduled Date</p>
+                      <p className="text-sm font-medium text-[#334155]">{formatDate(consultation.scheduled_at)}</p>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-[#64748B] mt-0.5" />
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                        Time & Duration
-                    </p>
-                      <p className="text-sm text-[#334155]">
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-[#1E3A8A]" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-[#64748B] mb-1">Time & Duration</p>
+                      <p className="text-sm font-medium text-[#334155]">
                         {formatTime(consultation.scheduled_at)} ({consultation.duration_minutes} min)
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-start gap-3">
-                    <DollarSign className="w-5 h-5 text-[#64748B] mt-0.5" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
+                      <DollarSign className="w-5 h-5 text-[#1E3A8A]" />
+                    </div>
                     <div className="flex-1">
-                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                        Consultation Fee
-                      </p>
-                      <p className="text-sm text-[#334155]">₦{consultation.price.toLocaleString()}</p>
-                      {consultation.platform_fee && consultation.platform_fee > 0 && consultation.is_paid && (
+                      <p className="text-xs text-[#64748B] mb-1">Consultation Fee</p>
+                      <p className="text-sm font-medium text-[#334155]">₦{consultation.price.toLocaleString()}</p>
+                      {/* Platform fee breakdown only visible to companies */}
+                      {userRole !== 'client' && consultation.platform_fee && consultation.platform_fee > 0 && consultation.is_paid && (
                         <div className="mt-2 pt-2 border-t border-[#E5E7EB] space-y-1">
                           <div className="flex justify-between items-center">
                             <span className="text-xs text-[#64748B]">
@@ -248,7 +258,7 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                           </div>
                           <div className="flex justify-between items-center pt-1">
                             <span className="text-xs font-medium text-[#334155]">
-                              {userRole === 'client' ? 'Amount to Company' : 'Amount You\'ll Receive'}
+                              Amount You'll Receive
                             </span>
                             <span className="text-xs font-bold text-[#334155]">
                               ₦{(consultation.net_amount || (consultation.price - consultation.platform_fee)).toLocaleString()}
@@ -259,12 +269,12 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                     </div>
                   </div>
                   
-                  <div className="flex items-start gap-3">
-                    <FileText className="w-5 h-5 text-[#64748B] mt-0.5" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-[#1E3A8A]" />
+                    </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                        Payment Status
-                      </p>
+                      <p className="text-xs text-[#64748B] mb-1">Payment Status</p>
                       <StatusBadge 
                         status={getPaymentStatusBadgeStatus(consultation.payment_status)} 
                       />
@@ -273,21 +283,23 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                 </div>
                 
                 {consultation.meeting_link && (
-                  <div className="flex items-start gap-3 pt-4 border-t border-[#E5E7EB]">
-                  <Video className="w-5 h-5 text-[#64748B] mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-2">
-                      Meeting Link
-                    </p>
-                    <a
-                        href={consultation.meeting_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] underline break-all"
-                    >
-                        {consultation.meeting_link}
-                    </a>
-                  </div>
+                  <div className="pt-4 border-t border-[#E5E7EB]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
+                        <Video className="w-5 h-5 text-[#1E3A8A]" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-[#64748B] mb-2">Meeting Link</p>
+                        <a
+                          href={consultation.meeting_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] underline break-all"
+                        >
+                          {consultation.meeting_link}
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -297,6 +309,7 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                   <Button 
                     fullWidth
                     onClick={() => window.open(consultation.meeting_link!, '_blank')}
+                    className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
                   >
                     <Video className="w-4 h-4 mr-2" />
                     Join Meeting
@@ -306,7 +319,11 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
               
               {userRole === 'client' && consultation.status === 'scheduled' && !consultation.is_paid && consultation.payment_status !== 'paid' && (
                 <div className="mt-6 pt-6 border-t border-[#E5E7EB]">
-                  <Button fullWidth onClick={handlePay}>
+                  <Button 
+                    fullWidth 
+                    onClick={handlePay}
+                    className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
+                  >
                     <DollarSign className="w-4 h-4 mr-2" />
                     Pay Consultation Fee (₦{consultation.price.toLocaleString()})
                   </Button>
@@ -314,8 +331,8 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
               )}
               {userRole === 'client' && (consultation.is_paid || consultation.payment_status === 'paid') && (
                 <div className="mt-6 pt-6 border-t border-[#E5E7EB]">
-                  <div className="bg-[#D1FAE5] rounded-lg p-4 text-center">
-                    <p className="text-sm font-medium text-[#16A34A]">✓ Payment Completed</p>
+                  <div className="bg-[#D1FAE5] rounded-lg p-4 text-center border border-[#A7F3D0]">
+                    <p className="text-sm font-medium text-[#065F46]">✓ Payment Completed</p>
                   </div>
                 </div>
               )}
@@ -338,6 +355,7 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                         toast.error(error.response?.data?.message || 'Failed to mark consultation as completed');
                       }
                     }}
+                    className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Mark as Completed
@@ -350,132 +368,136 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                   <Button 
                     fullWidth 
                     onClick={() => setShowCreateProjectModal(true)}
+                    className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
                   >
                     <FileText className="w-4 h-4 mr-2" />
                     Create Project from Consultation
                   </Button>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
           
           {/* Next Steps */}
-          <Card>
-            <CardHeader>
-              <CardTitle>After the Consultation</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
+            <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-[#1E3A8A]" />
+                <h3 className="text-lg font-semibold text-[#334155]">After the Consultation</h3>
+              </div>
+            </div>
+            <div className="p-6">
               <div className="space-y-3">
-                <div className="flex gap-3">
-                  <div className="w-6 h-6 rounded-full bg-[#1E3A8A] text-white flex items-center justify-center text-xs font-medium flex-shrink-0">
+                <div className="flex gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
                     1
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-[#334155]">Define Project Scope</p>
+                    <p className="text-sm font-semibold text-[#334155]">Define Project Scope</p>
                     <p className="text-sm text-[#64748B] mt-1">
                       Work with the company to outline your project requirements and timeline.
                     </p>
                   </div>
                 </div>
                 
-                <div className="flex gap-3">
-                  <div className="w-6 h-6 rounded-full bg-[#1E3A8A] text-white flex items-center justify-center text-xs font-medium flex-shrink-0">
+                <div className="flex gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
                     2
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-[#334155]">Review Proposal</p>
+                    <p className="text-sm font-semibold text-[#334155]">Review Proposal</p>
                     <p className="text-sm text-[#64748B] mt-1">
                       Company will provide detailed proposal with milestones and pricing.
                     </p>
                   </div>
                 </div>
                 
-                <div className="flex gap-3">
-                  <div className="w-6 h-6 rounded-full bg-[#1E3A8A] text-white flex items-center justify-center text-xs font-medium flex-shrink-0">
+                <div className="flex gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
                     3
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-[#334155]">Fund Escrow</p>
+                    <p className="text-sm font-semibold text-[#334155]">Fund Escrow</p>
                     <p className="text-sm text-[#64748B] mt-1">
                       Once approved, fund the project escrow to begin construction.
                     </p>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
         
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Company Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Company Contact</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
+            <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-[#1E3A8A]" />
+                <h3 className="text-lg font-semibold text-[#334155]">Company Contact</h3>
+              </div>
+            </div>
+            <div className="p-6">
               <div className="space-y-4">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                    Company Name
-                  </p>
-                  <p className="text-sm text-[#334155] font-medium">
+                  <p className="text-xs text-[#64748B] mb-1">Company Name</p>
+                  <p className="text-sm text-[#334155] font-semibold">
                     {consultation.company?.company_name || 'N/A'}
                   </p>
                 </div>
                 
                 {consultation.company?.user && (
                   <>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                    Contact Person
-                  </p>
-                      <p className="text-sm text-[#334155]">{consultation.company.user.name}</p>
-                </div>
-                
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                    Email
-                  </p>
-                  <a
+                    <div>
+                      <p className="text-xs text-[#64748B] mb-1">Contact Person</p>
+                      <p className="text-sm text-[#334155] font-medium">{consultation.company.user.name}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-xs text-[#64748B] mb-1">Email</p>
+                      <a
                         href={`mailto:${consultation.company.user.email}`}
-                    className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8]"
-                  >
+                        className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] font-medium"
+                      >
                         {consultation.company.user.email}
-                  </a>
-                </div>
+                      </a>
+                    </div>
                   </>
                 )}
                 
                 {consultation.company?.registration_number && (
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                      Registration Number
-                    </p>
-                    <p className="text-sm text-[#334155]">{consultation.company.registration_number}</p>
+                    <p className="text-xs text-[#64748B] mb-1">Registration Number</p>
+                    <p className="text-sm text-[#334155] font-medium">{consultation.company.registration_number}</p>
                   </div>
                 )}
                 
                 {consultation.company?.specialization && consultation.company.specialization.length > 0 && (
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
-                      Specialization
-                  </p>
-                    <p className="text-sm text-[#334155]">
-                      {consultation.company.specialization.join(', ')}
-                    </p>
-                </div>
+                  <div>
+                    <p className="text-xs text-[#64748B] mb-1">Specialization</p>
+                    <div className="flex flex-wrap gap-2">
+                      {consultation.company.specialization.map((spec, idx) => (
+                        <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-[#F8FAFC] text-[#64748B] border border-[#E5E7EB]">
+                          {spec}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
           
           {/* Payment Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
+            <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-[#1E3A8A]" />
+                <h3 className="text-lg font-semibold text-[#334155]">Payment</h3>
+              </div>
+            </div>
+            <div className="p-6">
               <div className="space-y-3">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -484,7 +506,8 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                       ₦{consultation.price.toLocaleString()}
                     </span>
                   </div>
-                  {consultation.platform_fee && consultation.platform_fee > 0 && (
+                  {/* Platform fee breakdown only visible to companies */}
+                  {userRole !== 'client' && consultation.platform_fee && consultation.platform_fee > 0 && (
                     <>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-[#64748B]">
@@ -496,7 +519,7 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                       </div>
                       <div className="flex items-center justify-between pt-1 border-t border-[#E5E7EB]">
                         <span className="text-sm font-medium text-[#334155]">
-                          {userRole === 'client' ? 'Amount to Company' : 'Amount You\'ll Receive'}
+                          Amount You'll Receive
                         </span>
                         <span className="text-sm font-bold text-[#334155]">
                           ₦{(consultation.net_amount || (consultation.price - consultation.platform_fee)).toLocaleString()}
@@ -506,7 +529,9 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                   )}
                 </div>
                 <p className="text-xs text-[#64748B] mt-1">
-                  Paid to {consultation.company?.company_name || 'the company'} for consultation services
+                  {userRole === 'client' 
+                    ? `Consultation fee for ${consultation.company?.company_name || 'the company'}`
+                    : `Paid by client for consultation services`}
                 </p>
                 
                 <div className="flex items-center justify-between pt-3 border-t border-[#E5E7EB]">
@@ -517,22 +542,26 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                 </div>
                 
                 {userRole === 'client' && !consultation.is_paid && consultation.payment_status !== 'paid' && (
-                  <div className="pt-3 border-t border-[#E5E7EB]">
-                    <Button fullWidth onClick={handlePay}>
+                  <div className="pt-4 border-t border-[#E5E7EB]">
+                    <Button 
+                      fullWidth 
+                      onClick={handlePay}
+                      className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
+                    >
                       Pay Now
                     </Button>
                   </div>
                 )}
                 {userRole === 'client' && (consultation.is_paid || consultation.payment_status === 'paid') && (
-                  <div className="pt-3 border-t border-[#E5E7EB]">
-                    <div className="bg-[#D1FAE5] rounded-lg p-3 text-center">
-                      <p className="text-sm font-medium text-[#16A34A]">✓ Payment Completed</p>
+                  <div className="pt-4 border-t border-[#E5E7EB]">
+                    <div className="bg-[#D1FAE5] rounded-lg p-3 text-center border border-[#A7F3D0]">
+                      <p className="text-sm font-medium text-[#065F46]">✓ Payment Completed</p>
                     </div>
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
 
