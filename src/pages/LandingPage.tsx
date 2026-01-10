@@ -10,10 +10,10 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* Navigation */}
-      <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-50 shadow-sm">
+      <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-50 shadow-sm animate-fade-in">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#FF8C42] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#FF8C42] flex items-center justify-center animate-scale-in">
               <Building2 className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-xl font-bold text-[#334155]">BuildTrust</h1>
@@ -22,13 +22,13 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             <Button 
               variant="ghost" 
               onClick={() => onNavigate('/login')}
-              className="text-[#334155] hover:text-[#1E3A8A]"
+              className="text-[#334155] hover:text-[#1E3A8A] transition-all duration-300"
             >
               Sign In
             </Button>
             <Button 
               onClick={() => onNavigate('/register')}
-              className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6]"
+              className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] transition-all duration-300"
             >
               Get Started
             </Button>
@@ -41,25 +41,25 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,transparent)]" />
         <div className="relative max-w-7xl mx-auto px-6">
           <div className="text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-6">
-              <Star className="w-4 h-4 text-yellow-300" />
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-6 animate-slide-up delay-100">
+              <Star className="w-4 h-4 text-yellow-300 animate-pulse-slow" />
               <span className="text-sm font-medium text-white">Trusted by 100+ Diaspora Families</span>
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+            <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight animate-slide-up delay-200">
               Build Your Dream Home in Africa<br />
               <span className="text-[#FFD700]">With Complete Trust</span>
             </h1>
-            <p className="text-xl text-white/90 mb-8 leading-relaxed">
+            <p className="text-xl text-white/90 mb-8 leading-relaxed animate-slide-up delay-300">
               Secure escrow platform connecting Africans in the diaspora with verified construction companies. 
               Fund projects with confidence, approve milestones, and release payments only when work is complete.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-slide-up delay-400">
               <button
                 onClick={() => onNavigate('/register')}
                 className="inline-flex items-center justify-center gap-2 rounded-lg font-semibold bg-white text-[#1E3A8A] hover:bg-gray-100 px-8 py-6 text-lg shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#1E3A8A]"
               >
                 Get Started Free
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
               </button>
               <button
                 onClick={() => onNavigate('/consultations')}
@@ -68,18 +68,18 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                 Book Consultation
               </button>
             </div>
-            <div className="flex items-center justify-center gap-8 mt-12 text-white/80">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-300" />
-                <span className="text-sm">No Setup Fees</span>
+            <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 mt-12 text-white/80">
+              <div className="flex items-center gap-2 animate-slide-up delay-500">
+                <CheckCircle className="w-5 h-5 text-green-300 animate-float" />
+                <span className="text-sm whitespace-nowrap">No Setup Fees</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-blue-300" />
-                <span className="text-sm">100% Secure</span>
+              <div className="flex items-center gap-2 animate-slide-up delay-600">
+                <Shield className="w-5 h-5 text-blue-300 animate-float" style={{ animationDelay: '0.5s' }} />
+                <span className="text-sm whitespace-nowrap">100% Secure</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-yellow-300" />
-                <span className="text-sm">Instant Access</span>
+              <div className="flex items-center gap-2 animate-slide-up delay-700">
+                <Zap className="w-5 h-5 text-yellow-300 animate-float" style={{ animationDelay: '1s' }} />
+                <span className="text-sm whitespace-nowrap">Instant Access</span>
               </div>
             </div>
           </div>
@@ -96,8 +96,8 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
               { label: 'Happy Clients', value: '1000+', icon: Users },
               { label: 'Total Escrow', value: '$50M+', icon: TrendingUp },
             ].map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 mb-3">
+              <div key={index} className={`text-center animate-scale-in ${index === 0 ? 'delay-100' : index === 1 ? 'delay-200' : index === 2 ? 'delay-300' : 'delay-400'}`}>
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 mb-3 hover:scale-110 transition-transform duration-300">
                   <stat.icon className="w-6 h-6 text-[#1E3A8A]" />
                 </div>
                 <div className="text-3xl font-bold text-[#334155] mb-1">{stat.value}</div>
@@ -110,7 +110,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
       
       {/* How It Works */}
       <section className="max-w-7xl mx-auto px-6 py-20">
-        <div className="text-center mb-16">
+        <div className="text-center mb-16 animate-slide-up delay-100">
           <h2 className="text-4xl font-bold text-[#334155] mb-4">How It Works</h2>
           <p className="text-lg text-[#64748B] max-w-2xl mx-auto">
             Simple, secure, and transparent. Get started in minutes and build with confidence.
@@ -144,9 +144,9 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
               gradient: 'from-[#F59E0B] to-[#D97706]',
             },
           ].map((step, index) => (
-            <div key={index} className="relative group">
+            <div key={index} className={`relative group animate-slide-up ${index === 0 ? 'delay-200' : index === 1 ? 'delay-300' : index === 2 ? 'delay-400' : 'delay-500'}`}>
               <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-lg p-8 h-full hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${step.gradient} text-white mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${step.gradient} text-white mb-6 group-hover:scale-110 transition-transform duration-300 animate-float`} style={{ animationDelay: `${index * 0.2}s` }}>
                   {step.icon}
                 </div>
                 <div className="absolute top-8 right-8 text-6xl font-bold text-[#F8FAFC] opacity-50">
@@ -167,7 +167,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
       {/* Why Escrow Matters */}
       <section className="bg-white border-y border-[#E5E7EB] py-20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
+          <div className="text-center mb-16 animate-slide-up delay-100">
             <h2 className="text-4xl font-bold text-[#334155] mb-4">Why Escrow Matters</h2>
             <p className="text-lg text-[#64748B] max-w-2xl mx-auto">
               Complete financial control and transparency throughout your construction project.
@@ -195,8 +195,12 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                 gradient: 'from-[#F59E0B] to-[#D97706]',
               },
             ].map((item, index) => (
-              <div key={index} className="bg-gradient-to-br from-white to-[#F8FAFC] rounded-2xl border border-[#E5E7EB] shadow-lg p-8 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${item.gradient} text-white mb-6`}>
+              <div key={index} className={`bg-gradient-to-br from-white to-[#F8FAFC] rounded-2xl border border-[#E5E7EB] shadow-lg p-8 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 ${
+                index === 0 ? 'animate-slide-in-left delay-200' : 
+                index === 1 ? 'animate-scale-in delay-300' : 
+                'animate-slide-in-right delay-400'
+              }`}>
+                <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${item.gradient} text-white mb-6 hover:scale-110 transition-transform duration-300`}>
                   {item.icon}
                 </div>
                 <h3 className="text-xl font-semibold text-[#334155] mb-3">
@@ -220,19 +224,19 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
           }} />
         </div>
         <div className="relative max-w-7xl mx-auto px-6 text-center">
-          <h2 className="text-4xl font-bold text-white mb-4">
+          <h2 className="text-4xl font-bold text-white mb-4 animate-slide-up delay-100">
             Ready to Start Building?
           </h2>
-          <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">
+          <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto animate-slide-up delay-200">
             Join thousands of diaspora families building their dream homes in Africa with complete trust and security.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-scale-in delay-300">
             <button
               onClick={() => onNavigate('/register')}
-              className="inline-flex items-center justify-center gap-2 rounded-lg font-semibold bg-white text-[#1E3A8A] hover:bg-gray-100 px-10 py-6 text-lg shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#1E3A8A]"
+              className="inline-flex items-center justify-center gap-2 rounded-lg font-semibold bg-white text-[#1E3A8A] hover:bg-gray-100 px-10 py-6 text-lg shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#1E3A8A] group"
             >
               Create Free Account
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
               onClick={() => onNavigate('/login')}
@@ -245,7 +249,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
       </section>
       
       {/* Footer */}
-      <footer className="bg-white border-t border-[#E5E7EB] py-6">
+      <footer className="bg-white border-t border-[#E5E7EB] py-6 animate-fade-in delay-500">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
