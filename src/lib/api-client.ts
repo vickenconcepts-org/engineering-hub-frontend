@@ -20,6 +20,13 @@ export interface ApiResponse<T = any> {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const TOKEN_COOKIE_NAME = 'auth_token';
 
+// Debug: Log API base URL (remove in production if desired)
+if (import.meta.env.MODE === 'development' || import.meta.env.MODE === 'production') {
+  console.log('API Base URL:', API_BASE_URL);
+  console.log('Environment:', import.meta.env.MODE);
+  console.log('VITE_API_BASE_URL env var:', import.meta.env.VITE_API_BASE_URL);
+}
+
 /**
  * Create axios instance with default configuration
  */
