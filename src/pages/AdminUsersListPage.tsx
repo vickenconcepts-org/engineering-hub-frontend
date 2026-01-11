@@ -10,11 +10,13 @@ import { StatusBadge } from '../components/StatusBadge';
 import { Table, Pagination } from '../components/Table';
 import { Modal } from '../components/Modal';
 import { adminService, AdminUser, UpdateUserData } from '../services/admin.service';
+import { User as AuthUser } from '../services/auth.service';
 
 interface AdminUsersListPageProps {
+  user?: AuthUser;
 }
 
-export function AdminUsersListPage({}: AdminUsersListPageProps) {
+export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProps) {
   const navigate = useNavigate();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -215,42 +217,49 @@ export function AdminUsersListPage({}: AdminUsersListPageProps) {
         >
           <Edit2 className="w-4 h-4" />
         </Button>
-        {user.status !== 'active' ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => handleActivate(user)}
-            className="text-[#16A34A] hover:bg-[#D1FAE5]"
-            title="Activate user"
-          >
-            <CheckCircle className="w-4 h-4" />
-          </Button>
+        {currentUser && currentUser.id === user.id ? (
+          // Hide suspend/activate and delete buttons for current user
+          <span className="text-xs text-[#64748B] italic">Current user</span>
         ) : (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setSelectedUser(user);
-              setIsSuspendModalOpen(true);
-            }}
-            className="text-[#F59E0B] hover:bg-[#FEF3C7]"
-            title="Suspend user"
-          >
-            <XCircle className="w-4 h-4" />
-          </Button>
+          <>
+            {user.status !== 'active' ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleActivate(user)}
+                className="text-[#16A34A] hover:bg-[#D1FAE5]"
+                title="Activate user"
+              >
+                <CheckCircle className="w-4 h-4" />
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setSelectedUser(user);
+                  setIsSuspendModalOpen(true);
+                }}
+                className="text-[#F59E0B] hover:bg-[#FEF3C7]"
+                title="Suspend user"
+              >
+                <XCircle className="w-4 h-4" />
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setSelectedUser(user);
+                setIsDeleteModalOpen(true);
+              }}
+              className="text-[#DC2626] hover:bg-[#FEE2E2]"
+              title="Delete user"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </>
         )}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setSelectedUser(user);
-            setIsDeleteModalOpen(true);
-          }}
-          className="text-[#DC2626] hover:bg-[#FEE2E2]"
-          title="Delete user"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
       </div>
     ),
   }));
@@ -503,13 +512,28 @@ export function AdminUsersListPage({}: AdminUsersListPageProps) {
               </label>
               <Select
                 value={editFormData.role || 'client'}
-                onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value as any })}
+                onChange={(e) => {
+                  // Prevent changing to admin if there's already an admin (unless editing the existing admin)
+                  if (e.target.value === 'admin' && adminCount > 0 && selectedUser?.role !== 'admin') {
+                    toast.error('Only one admin is allowed in the system');
+                    return;
+                  }
+                  setEditFormData({ ...editFormData, role: e.target.value as any });
+                }}
+                disabled={selectedUser?.id === currentUser?.id}
                 options={[
                   { value: 'client', label: 'Client' },
                   { value: 'company', label: 'Company' },
-                  { value: 'admin', label: 'Admin' },
+                  // Only show admin option if there's no admin or if editing the existing admin
+                  ...(adminCount === 0 || (selectedUser && selectedUser.role === 'admin') ? [{ value: 'admin', label: 'Admin' }] : []),
                 ]}
               />
+              {selectedUser?.id === currentUser?.id && (
+                <p className="text-xs text-[#64748B] mt-1">You cannot change your own role</p>
+              )}
+              {adminCount > 0 && selectedUser && selectedUser.role !== 'admin' && (
+                <p className="text-xs text-[#64748B] mt-1">Only one admin is allowed in the system</p>
+              )}
             </div>
           </div>
         )}
