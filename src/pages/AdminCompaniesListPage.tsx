@@ -48,12 +48,13 @@ export function AdminCompaniesListPage({}: AdminCompaniesListPageProps) {
     loadCompanies();
   }, [currentPage, statusFilter, verifiedFilter]);
   
-  const loadCompanies = async () => {
+  const loadCompanies = async (page?: number) => {
     try {
       setIsLoading(true);
+      const pageToUse = page !== undefined ? page : currentPage;
       const params: any = {
         per_page: perPage,
-        page: currentPage,
+        page: pageToUse,
       };
       
       if (statusFilter !== 'all') {
@@ -68,6 +69,10 @@ export function AdminCompaniesListPage({}: AdminCompaniesListPageProps) {
       setCompanies(response.companies);
       setTotalPages(response.meta.last_page);
       setTotal(response.meta.total);
+      // Update currentPage if a specific page was requested and different
+      if (page !== undefined && page !== currentPage) {
+        setCurrentPage(page);
+      }
     } catch (error) {
       console.error('Failed to load companies:', error);
       toast.error('Failed to load companies');
@@ -132,7 +137,8 @@ export function AdminCompaniesListPage({}: AdminCompaniesListPageProps) {
       });
       setNewPortfolioLink('');
       setNewSpecialization('');
-      loadCompanies();
+      // Reset to page 1 to see the new company and reload
+      await loadCompanies(1);
     } catch (error: any) {
       console.error('Failed to create company:', error);
       toast.error(error?.response?.data?.message || 'Failed to create company');

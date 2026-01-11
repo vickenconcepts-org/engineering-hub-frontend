@@ -48,12 +48,13 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
     loadUsers();
   }, [currentPage, roleFilter, statusFilter]);
   
-  const loadUsers = async () => {
+  const loadUsers = async (page?: number) => {
     try {
       setIsLoading(true);
+      const pageToUse = page !== undefined ? page : currentPage;
       const params: any = {
         per_page: perPage,
-        page: currentPage,
+        page: pageToUse,
       };
       
       if (roleFilter !== 'all') {
@@ -72,6 +73,10 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
       setUsers(response.users);
       setTotalPages(response.meta.last_page);
       setTotal(response.meta.total);
+      // Update currentPage if a specific page was requested and different
+      if (page !== undefined && page !== currentPage) {
+        setCurrentPage(page);
+      }
     } catch (error) {
       console.error('Failed to load users:', error);
       toast.error('Failed to load users');
@@ -190,7 +195,8 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
         password: '',
         status: 'active',
       });
-      loadUsers();
+      // Reset to page 1 to see the new user and reload
+      await loadUsers(1);
     } catch (error: any) {
       console.error('Failed to create user:', error);
       toast.error(error?.response?.data?.message || 'Failed to create user');
