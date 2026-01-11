@@ -17,6 +17,7 @@ import {
   Receipt,
   Home,
   ChevronDown,
+  Users,
 } from 'lucide-react';
 
 interface NavItem {
@@ -94,6 +95,7 @@ export function AuthLayout({
   
   if (userRole === 'admin') {
     navItems.push(
+      { label: 'Users', icon: <Users className="w-5 h-5" />, path: '/admin/users', adminOnly: true },
       { label: 'Companies', icon: <Building2 className="w-5 h-5" />, path: '/admin/companies', adminOnly: true },
       { label: 'Escrow', icon: <Shield className="w-5 h-5" />, path: '/admin/escrow', adminOnly: true },
       { label: 'Disputes', icon: <AlertCircle className="w-5 h-5" />, path: '/admin/disputes', adminOnly: true },

@@ -9,6 +9,7 @@ export type BadgeStatus =
   | 'disputed'
   | 'completed'
   | 'active'
+  | 'suspended'
   | 'scheduled';
 
 interface StatusBadgeProps {
@@ -57,6 +58,11 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
       bg: 'bg-[#DBEAFE]',
       text: 'text-[#1E40AF]',
       label: 'Active',
+    },
+    suspended: {
+      bg: 'bg-[#FEE2E2]',
+      text: 'text-[#991B1B]',
+      label: 'Suspended',
     },
     scheduled: {
       bg: 'bg-[#E0E7FF]',

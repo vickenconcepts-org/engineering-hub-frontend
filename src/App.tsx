@@ -18,6 +18,7 @@ import { MilestoneDetailPage } from './pages/MilestoneDetailPage';
 import { CreateMilestonesPage } from './pages/CreateMilestonesPage';
 import { PaymentCallbackPage } from './pages/PaymentCallbackPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { AdminUsersListPage } from './pages/AdminUsersListPage';
 import { AdminCompaniesListPage } from './pages/AdminCompaniesListPage';
 import { AdminCompanyReviewPage } from './pages/AdminCompanyReviewPage';
 import { AdminDisputesListPage } from './pages/AdminDisputesListPage';
@@ -226,6 +227,7 @@ export default function App() {
         
         <Route path="/admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
         <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute><AdminUsersListPage /></ProtectedRoute>} />
         <Route path="/admin/companies" element={<ProtectedRoute><AdminCompaniesListPage /></ProtectedRoute>} />
         <Route path="/admin/companies/:id" element={<ProtectedRoute><AdminCompanyReviewWrapper /></ProtectedRoute>} />
         <Route path="/admin/escrow" element={<ProtectedRoute><AdminEscrowPage /></ProtectedRoute>} />

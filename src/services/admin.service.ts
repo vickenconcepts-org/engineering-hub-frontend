@@ -120,6 +120,39 @@ export interface ResolveDisputeData {
   status: 'resolved' | 'escalated';
 }
 
+/**
+ * User interface for admin
+ */
+export interface AdminUser {
+  id: string; // UUID
+  name: string;
+  email: string;
+  phone?: string;
+  role: 'client' | 'company' | 'admin';
+  status: 'active' | 'suspended' | 'pending';
+  email_verified_at?: string;
+  created_at: string;
+  updated_at: string;
+  company?: AdminCompany;
+}
+
+/**
+ * Update user data
+ */
+export interface UpdateUserData {
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: 'client' | 'company' | 'admin';
+}
+
+/**
+ * Suspend user data
+ */
+export interface SuspendUserData {
+  reason?: string;
+}
+
 export const adminService = {
   /**
    * List companies (with filters)
@@ -267,6 +300,64 @@ export const adminService = {
   async releaseEscrow(id: string, data: ReleaseEscrowData): Promise<any> {
     const response = await apiClient.post<ApiResponse<any>>(`/admin/milestones/${id}/release`, data);
     return extractData(response);
+  },
+
+  /**
+   * List users (with filters)
+   */
+  async listUsers(params?: {
+    role?: 'client' | 'company' | 'admin' | 'all';
+    status?: 'active' | 'suspended' | 'pending' | 'all';
+    search?: string;
+    per_page?: number;
+    page?: number;
+  }): Promise<{ users: AdminUser[]; meta: PaginationMeta }> {
+    const response = await apiClient.get<ApiResponse<AdminUser[]>>('/admin/users', {
+      params,
+    });
+    return {
+      users: extractData<AdminUser[]>(response),
+      meta: extractMeta(response) as PaginationMeta,
+    };
+  },
+
+  /**
+   * Get user details
+   */
+  async getUser(id: string): Promise<AdminUser> {
+    const response = await apiClient.get<ApiResponse<AdminUser>>(`/admin/users/${id}`);
+    return extractData<AdminUser>(response);
+  },
+
+  /**
+   * Update user
+   */
+  async updateUser(id: string, data: UpdateUserData): Promise<AdminUser> {
+    const response = await apiClient.put<ApiResponse<AdminUser>>(`/admin/users/${id}`, data);
+    return extractData<AdminUser>(response);
+  },
+
+  /**
+   * Activate user
+   */
+  async activateUser(id: string): Promise<AdminUser> {
+    const response = await apiClient.post<ApiResponse<AdminUser>>(`/admin/users/${id}/activate`);
+    return extractData<AdminUser>(response);
+  },
+
+  /**
+   * Suspend user
+   */
+  async suspendUser(id: string, data?: SuspendUserData): Promise<AdminUser> {
+    const response = await apiClient.post<ApiResponse<AdminUser>>(`/admin/users/${id}/suspend`, data || {});
+    return extractData<AdminUser>(response);
+  },
+
+  /**
+   * Delete user
+   */
+  async deleteUser(id: string): Promise<void> {
+    await apiClient.delete(`/admin/users/${id}`);
   },
 };
 
