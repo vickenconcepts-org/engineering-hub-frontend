@@ -169,6 +169,34 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
     }
   };
   
+  const handleCreateUser = async () => {
+    if (!createFormData.name || !createFormData.email || !createFormData.password) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    try {
+      setIsCreating(true);
+      await adminService.createUser(createFormData);
+      toast.success('User created successfully');
+      setIsCreateModalOpen(false);
+      setCreateFormData({
+        name: '',
+        email: '',
+        phone: '',
+        password: '',
+        role: 'client',
+        status: 'active',
+      });
+      loadUsers();
+    } catch (error: any) {
+      console.error('Failed to create user:', error);
+      toast.error(error?.response?.data?.message || 'Failed to create user');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+  
   const getRoleDisplay = (role: string) => {
     switch (role) {
       case 'admin':
