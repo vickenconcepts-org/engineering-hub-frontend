@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Users, Search, CheckCircle, XCircle, UserCircle, Trash2, Edit2, Shield } from 'lucide-react';
+import { Users, Search, CheckCircle, XCircle, UserCircle, Trash2, Edit2, Shield, Plus } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
@@ -9,7 +9,7 @@ import { Textarea } from '../components/Textarea';
 import { StatusBadge } from '../components/StatusBadge';
 import { Table, Pagination } from '../components/Table';
 import { Modal } from '../components/Modal';
-import { adminService, AdminUser, UpdateUserData } from '../services/admin.service';
+import { adminService, AdminUser, UpdateUserData, CreateUserData } from '../services/admin.service';
 import { User as AuthUser } from '../services/auth.service';
 
 interface AdminUsersListPageProps {
@@ -29,11 +29,21 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
   const [total, setTotal] = useState(0);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<UpdateUserData>({});
+  const [createFormData, setCreateFormData] = useState<CreateUserData>({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    role: 'client',
+    status: 'active',
+  });
   const [suspendReason, setSuspendReason] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   
   useEffect(() => {
     loadUsers();
@@ -410,11 +420,20 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
         {/* Users Table */}
         <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
           <div className="p-6 border-b border-[#E5E7EB]">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-[#1E3A8A]" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-[#1E3A8A]" />
+                </div>
+                <h2 className="text-lg font-semibold text-[#334155]">Users</h2>
               </div>
-              <h2 className="text-lg font-semibold text-[#334155]">Users</h2>
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create User
+              </Button>
             </div>
           </div>
           <div className="p-6">
@@ -448,6 +467,115 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
           </div>
         </div>
       </div>
+
+      {/* Create User Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setCreateFormData({
+            name: '',
+            email: '',
+            phone: '',
+            password: '',
+            role: 'client',
+            status: 'active',
+          });
+        }}
+        title="Create User"
+        size="md"
+        primaryAction={{
+          label: 'Create User',
+          onClick: handleCreateUser,
+          disabled: isCreating,
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: () => {
+            setIsCreateModalOpen(false);
+            setCreateFormData({
+              name: '',
+              email: '',
+              phone: '',
+              password: '',
+              role: 'client',
+              status: 'active',
+            });
+          },
+        }}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-[#334155] mb-1">
+              Name <span className="text-[#DC2626]">*</span>
+            </label>
+            <Input
+              value={createFormData.name}
+              onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+              placeholder="User name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#334155] mb-1">
+              Email <span className="text-[#DC2626]">*</span>
+            </label>
+            <Input
+              type="email"
+              value={createFormData.email}
+              onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+              placeholder="user@example.com"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#334155] mb-1">
+              Phone
+            </label>
+            <Input
+              value={createFormData.phone || ''}
+              onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
+              placeholder="Phone number"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#334155] mb-1">
+              Password <span className="text-[#DC2626]">*</span>
+            </label>
+            <Input
+              type="password"
+              value={createFormData.password}
+              onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+              placeholder="Password (min 8 characters)"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#334155] mb-1">
+              Role <span className="text-[#DC2626]">*</span>
+            </label>
+            <Select
+              value={createFormData.role}
+              onChange={(e) => setCreateFormData({ ...createFormData, role: e.target.value as 'client' | 'company' })}
+              options={[
+                { value: 'client', label: 'Client' },
+                { value: 'company', label: 'Company' },
+              ]}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#334155] mb-1">
+              Status
+            </label>
+            <Select
+              value={createFormData.status || 'active'}
+              onChange={(e) => setCreateFormData({ ...createFormData, status: e.target.value as 'active' | 'suspended' | 'pending' })}
+              options={[
+                { value: 'active', label: 'Active' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'suspended', label: 'Suspended' },
+              ]}
+            />
+          </div>
+        </div>
+      </Modal>
 
       {/* Edit User Modal */}
       <Modal
