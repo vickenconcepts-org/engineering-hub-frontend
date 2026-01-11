@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Building2, Search, CheckCircle, Clock, Users, Shield } from 'lucide-react';
+import { Building2, Search, CheckCircle, Clock, Users, Shield, Plus, X } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { StatusBadge } from '../components/StatusBadge';
 import { Table, Pagination } from '../components/Table';
-import { adminService, AdminCompany } from '../services/admin.service';
+import { Modal } from '../components/Modal';
+import { Textarea } from '../components/Textarea';
+import { adminService, AdminCompany, CreateCompanyData } from '../services/admin.service';
 
 interface AdminCompaniesListPageProps {
 }
@@ -23,6 +25,24 @@ export function AdminCompaniesListPage({}: AdminCompaniesListPageProps) {
   const [perPage] = useState(15);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createFormData, setCreateFormData] = useState<CreateCompanyData>({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    user_status: 'active',
+    company_name: '',
+    registration_number: '',
+    license_documents: [],
+    portfolio_links: [],
+    specialization: [],
+    consultation_fee: 0,
+    company_status: 'approved',
+  });
+  const [newPortfolioLink, setNewPortfolioLink] = useState('');
+  const [newSpecialization, setNewSpecialization] = useState('');
   
   useEffect(() => {
     loadCompanies();
@@ -82,6 +102,96 @@ export function AdminCompaniesListPage({}: AdminCompaniesListPageProps) {
       month: 'short',
       day: 'numeric',
     });
+  };
+  
+  const handleCreateCompany = async () => {
+    if (!createFormData.name || !createFormData.email || !createFormData.password || 
+        !createFormData.company_name || !createFormData.registration_number) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    try {
+      setIsCreating(true);
+      await adminService.createCompany(createFormData);
+      toast.success('Company created successfully');
+      setIsCreateModalOpen(false);
+      setCreateFormData({
+        name: '',
+        email: '',
+        phone: '',
+        password: '',
+        user_status: 'active',
+        company_name: '',
+        registration_number: '',
+        license_documents: [],
+        portfolio_links: [],
+        specialization: [],
+        consultation_fee: 0,
+        company_status: 'approved',
+      });
+      setNewPortfolioLink('');
+      setNewSpecialization('');
+      loadCompanies();
+    } catch (error: any) {
+      console.error('Failed to create company:', error);
+      toast.error(error?.response?.data?.message || 'Failed to create company');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setCreateFormData({
+        ...createFormData,
+        license_documents: [...(createFormData.license_documents || []), ...files],
+      });
+    }
+  };
+  
+  const removeLicenseFile = (index: number) => {
+    const newFiles = [...(createFormData.license_documents || [])];
+    newFiles.splice(index, 1);
+    setCreateFormData({ ...createFormData, license_documents: newFiles });
+  };
+  
+  const addPortfolioLink = () => {
+    if (newPortfolioLink.trim()) {
+      try {
+        new URL(newPortfolioLink);
+        setCreateFormData({
+          ...createFormData,
+          portfolio_links: [...(createFormData.portfolio_links || []), newPortfolioLink.trim()],
+        });
+        setNewPortfolioLink('');
+      } catch {
+        toast.error('Please enter a valid URL');
+      }
+    }
+  };
+  
+  const removePortfolioLink = (index: number) => {
+    const newLinks = [...(createFormData.portfolio_links || [])];
+    newLinks.splice(index, 1);
+    setCreateFormData({ ...createFormData, portfolio_links: newLinks });
+  };
+  
+  const addSpecialization = () => {
+    if (newSpecialization.trim()) {
+      setCreateFormData({
+        ...createFormData,
+        specialization: [...(createFormData.specialization || []), newSpecialization.trim()],
+      });
+      setNewSpecialization('');
+    }
+  };
+  
+  const removeSpecialization = (index: number) => {
+    const newSpecs = [...(createFormData.specialization || [])];
+    newSpecs.splice(index, 1);
+    setCreateFormData({ ...createFormData, specialization: newSpecs });
   };
   
   const filteredCompanies = companies.filter(company => {
@@ -283,11 +393,20 @@ export function AdminCompaniesListPage({}: AdminCompaniesListPageProps) {
         {/* Companies Table */}
         <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
           <div className="p-6 border-b border-[#E5E7EB]">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-[#1E3A8A]" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-[#1E3A8A]" />
+                </div>
+                <h2 className="text-lg font-semibold text-[#334155]">Companies</h2>
               </div>
-              <h2 className="text-lg font-semibold text-[#334155]">Companies</h2>
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Company
+              </Button>
             </div>
           </div>
           <div className="p-6">
@@ -321,6 +440,289 @@ export function AdminCompaniesListPage({}: AdminCompaniesListPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Create Company Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setCreateFormData({
+            name: '',
+            email: '',
+            phone: '',
+            password: '',
+            user_status: 'active',
+            company_name: '',
+            registration_number: '',
+            license_documents: [],
+            portfolio_links: [],
+            specialization: [],
+            consultation_fee: 0,
+            company_status: 'approved',
+          });
+          setNewPortfolioLink('');
+          setNewSpecialization('');
+        }}
+        title="Create Company"
+        size="lg"
+        primaryAction={{
+          label: 'Create Company',
+          onClick: handleCreateCompany,
+          disabled: isCreating,
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: () => {
+            setIsCreateModalOpen(false);
+            setCreateFormData({
+              name: '',
+              email: '',
+              phone: '',
+              password: '',
+              user_status: 'active',
+              company_name: '',
+              registration_number: '',
+              license_documents: [],
+              portfolio_links: [],
+              specialization: [],
+              consultation_fee: 0,
+              company_status: 'approved',
+            });
+            setNewPortfolioLink('');
+            setNewSpecialization('');
+          },
+        }}
+      >
+        <div className="space-y-4">
+          {/* User Information Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-[#334155] mb-3">User Information</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  Name <span className="text-[#DC2626]">*</span>
+                </label>
+                <Input
+                  value={createFormData.name}
+                  onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+                  placeholder="User name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  Email <span className="text-[#DC2626]">*</span>
+                </label>
+                <Input
+                  type="email"
+                  value={createFormData.email}
+                  onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+                  placeholder="user@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  Phone
+                </label>
+                <Input
+                  value={createFormData.phone || ''}
+                  onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
+                  placeholder="Phone number"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  Password <span className="text-[#DC2626]">*</span>
+                </label>
+                <Input
+                  type="password"
+                  value={createFormData.password}
+                  onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+                  placeholder="Password (min 8 characters)"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  User Status
+                </label>
+                <Select
+                  value={createFormData.user_status || 'active'}
+                  onChange={(e) => setCreateFormData({ ...createFormData, user_status: e.target.value as 'active' | 'suspended' | 'pending' })}
+                  options={[
+                    { value: 'active', label: 'Active' },
+                    { value: 'pending', label: 'Pending' },
+                    { value: 'suspended', label: 'Suspended' },
+                  ]}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Company Information Section */}
+          <div className="border-t border-[#E5E7EB] pt-4">
+            <h3 className="text-sm font-semibold text-[#334155] mb-3">Company Information</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  Company Name <span className="text-[#DC2626]">*</span>
+                </label>
+                <Input
+                  value={createFormData.company_name}
+                  onChange={(e) => setCreateFormData({ ...createFormData, company_name: e.target.value })}
+                  placeholder="Company name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  Registration Number <span className="text-[#DC2626]">*</span>
+                </label>
+                <Input
+                  value={createFormData.registration_number}
+                  onChange={(e) => setCreateFormData({ ...createFormData, registration_number: e.target.value })}
+                  placeholder="Registration number"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  Consultation Fee (₦)
+                </label>
+                <Input
+                  type="number"
+                  value={createFormData.consultation_fee || ''}
+                  onChange={(e) => setCreateFormData({ ...createFormData, consultation_fee: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  Company Status
+                </label>
+                <Select
+                  value={createFormData.company_status || 'approved'}
+                  onChange={(e) => setCreateFormData({ ...createFormData, company_status: e.target.value as 'pending' | 'approved' | 'rejected' | 'suspended' })}
+                  options={[
+                    { value: 'approved', label: 'Approved' },
+                    { value: 'pending', label: 'Pending' },
+                    { value: 'suspended', label: 'Suspended' },
+                  ]}
+                />
+              </div>
+              
+              {/* License Documents */}
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  License Documents
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={handleFileChange}
+                  className="block w-full text-sm text-[#64748B] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#EFF6FF] file:text-[#1E3A8A] hover:file:bg-[#DBEAFE]"
+                />
+                {createFormData.license_documents && createFormData.license_documents.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {createFormData.license_documents.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-[#F8FAFC] p-2 rounded">
+                        <span className="text-sm text-[#334155]">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeLicenseFile(index)}
+                          className="text-[#DC2626] hover:text-[#B91C1C]"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Portfolio Links */}
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  Portfolio Links
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    value={newPortfolioLink}
+                    onChange={(e) => setNewPortfolioLink(e.target.value)}
+                    placeholder="https://example.com"
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addPortfolioLink())}
+                  />
+                  <Button
+                    type="button"
+                    onClick={addPortfolioLink}
+                    size="sm"
+                    className="bg-[#1E3A8A] text-white"
+                  >
+                    Add
+                  </Button>
+                </div>
+                {createFormData.portfolio_links && createFormData.portfolio_links.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {createFormData.portfolio_links.map((link, index) => (
+                      <div key={index} className="flex items-center justify-between bg-[#F8FAFC] p-2 rounded">
+                        <span className="text-sm text-[#334155] truncate">{link}</span>
+                        <button
+                          type="button"
+                          onClick={() => removePortfolioLink(index)}
+                          className="text-[#DC2626] hover:text-[#B91C1C] ml-2"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Specialization */}
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-1">
+                  Specialization
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    value={newSpecialization}
+                    onChange={(e) => setNewSpecialization(e.target.value)}
+                    placeholder="e.g., Residential Construction"
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSpecialization())}
+                  />
+                  <Button
+                    type="button"
+                    onClick={addSpecialization}
+                    size="sm"
+                    className="bg-[#1E3A8A] text-white"
+                  >
+                    Add
+                  </Button>
+                </div>
+                {createFormData.specialization && createFormData.specialization.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {createFormData.specialization.map((spec, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 bg-[#EFF6FF] text-[#1E3A8A] px-2 py-1 rounded text-sm"
+                      >
+                        {spec}
+                        <button
+                          type="button"
+                          onClick={() => removeSpecialization(index)}
+                          className="text-[#1E3A8A] hover:text-[#DC2626]"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

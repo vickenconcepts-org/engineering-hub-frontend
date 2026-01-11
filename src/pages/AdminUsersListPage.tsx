@@ -33,12 +33,11 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<UpdateUserData>({});
-  const [createFormData, setCreateFormData] = useState<CreateUserData>({
+  const [createFormData, setCreateFormData] = useState<Omit<CreateUserData, 'role'>>({
     name: '',
     email: '',
     phone: '',
     password: '',
-    role: 'client',
     status: 'active',
   });
   const [suspendReason, setSuspendReason] = useState('');
@@ -177,7 +176,11 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
     
     try {
       setIsCreating(true);
-      await adminService.createUser(createFormData);
+      // Automatically set role to 'client' when creating from users page
+      await adminService.createUser({
+        ...createFormData,
+        role: 'client',
+      });
       toast.success('User created successfully');
       setIsCreateModalOpen(false);
       setCreateFormData({
@@ -185,7 +188,6 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
         email: '',
         phone: '',
         password: '',
-        role: 'client',
         status: 'active',
       });
       loadUsers();
@@ -506,7 +508,6 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
             email: '',
             phone: '',
             password: '',
-            role: 'client',
             status: 'active',
           });
         }}
@@ -526,7 +527,6 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
               email: '',
               phone: '',
               password: '',
-              role: 'client',
               status: 'active',
             });
           },
@@ -573,19 +573,6 @@ export function AdminUsersListPage({ user: currentUser }: AdminUsersListPageProp
               value={createFormData.password}
               onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
               placeholder="Password (min 8 characters)"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-[#334155] mb-1">
-              Role <span className="text-[#DC2626]">*</span>
-            </label>
-            <Select
-              value={createFormData.role}
-              onChange={(e) => setCreateFormData({ ...createFormData, role: e.target.value as 'client' | 'company' })}
-              options={[
-                { value: 'client', label: 'Client' },
-                { value: 'company', label: 'Company' },
-              ]}
             />
           </div>
           <div>
