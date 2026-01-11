@@ -151,7 +151,7 @@ export function AdminCompaniesListPage({}: AdminCompaniesListPageProps) {
   const verifiedCount = companies.filter(c => c.is_verified).length;
 
   return (
-    <div className="bg-[#F5F5F5] min-h-screen p-6">
+    <div className="min-h-screen">
       <div className="space-y-6">
         {/* Header */}
         <div>

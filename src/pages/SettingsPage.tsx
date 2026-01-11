@@ -568,7 +568,7 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
   // Client/Admin settings
   if (userRole !== 'company') {
     return (
-      <div className="bg-[#F5F5F5] min-h-screen p-6">
+      <div className="min-h-screen">
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-[#334155] mb-2">Settings</h1>
@@ -583,7 +583,7 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
   
   if (isLoading) {
     return (
-      <div className="bg-[#F5F5F5] min-h-screen p-6">
+      <div className="min-h-screen">
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-[#334155] mb-2">Company Profile</h1>
@@ -613,7 +613,7 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
   };
   
   return (
-    <div className="bg-[#F5F5F5] min-h-screen p-6">
+    <div className="min-h-screen">
       <div className="space-y-6">
         {/* Header */}
         <div>

@@ -126,7 +126,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
   
   if (isLoading) {
     return (
-      <div className="bg-[#F5F5F5] min-h-screen p-6">
+      <div className="min-h-screen">
         <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-12">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A8A] mx-auto mb-4"></div>
@@ -139,7 +139,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
   
   if (!company) {
     return (
-      <div className="bg-[#F5F5F5] min-h-screen p-6">
+      <div className="min-h-screen">
         <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-12">
           <div className="text-center">
             <p className="text-sm text-[#64748B]">Company not found</p>
@@ -151,7 +151,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
   
   
   return (
-    <div className="bg-[#F5F5F5] min-h-screen p-6">
+    <div className="min-h-screen">
       <div className="space-y-6">
         {/* Back Button */}
         <button

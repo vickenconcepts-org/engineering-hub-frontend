@@ -278,7 +278,7 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
   const validNetAmount = isNaN(netAmount) || !isFinite(netAmount) ? 0 : netAmount;
 
   return (
-    <div className="bg-[#F5F5F5] min-h-screen p-6">
+    <div className="min-h-screen">
       <div className="space-y-6">
         {/* Header */}
         <div>
