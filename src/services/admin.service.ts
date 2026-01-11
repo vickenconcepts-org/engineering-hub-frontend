@@ -153,6 +153,39 @@ export interface SuspendUserData {
   reason?: string;
 }
 
+/**
+ * Create user data
+ */
+export interface CreateUserData {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  role: 'client' | 'company';
+  status?: 'active' | 'suspended' | 'pending';
+}
+
+/**
+ * Create company data
+ */
+export interface CreateCompanyData {
+  // User data
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  user_status?: 'active' | 'suspended' | 'pending';
+  
+  // Company data
+  company_name: string;
+  registration_number: string;
+  license_documents?: File[];
+  portfolio_links?: string[];
+  specialization?: string[];
+  consultation_fee?: number;
+  company_status?: 'pending' | 'approved' | 'rejected' | 'suspended';
+}
+
 export const adminService = {
   /**
    * List companies (with filters)
@@ -358,6 +391,61 @@ export const adminService = {
    */
   async deleteUser(id: string): Promise<void> {
     await apiClient.delete(`/admin/users/${id}`);
+  },
+
+  /**
+   * Create user
+   */
+  async createUser(data: CreateUserData): Promise<AdminUser> {
+    const response = await apiClient.post<ApiResponse<AdminUser>>('/admin/users', data);
+    return extractData<AdminUser>(response);
+  },
+
+  /**
+   * Create company
+   */
+  async createCompany(data: CreateCompanyData): Promise<AdminCompany> {
+    const formData = new FormData();
+    
+    // Add user data
+    formData.append('name', data.name);
+    formData.append('email', data.email);
+    if (data.phone) formData.append('phone', data.phone);
+    formData.append('password', data.password);
+    if (data.user_status) formData.append('user_status', data.user_status);
+    
+    // Add company data
+    formData.append('company_name', data.company_name);
+    formData.append('registration_number', data.registration_number);
+    if (data.consultation_fee !== undefined) formData.append('consultation_fee', data.consultation_fee.toString());
+    if (data.company_status) formData.append('company_status', data.company_status);
+    
+    // Add arrays
+    if (data.portfolio_links && data.portfolio_links.length > 0) {
+      data.portfolio_links.forEach((link, index) => {
+        formData.append(`portfolio_links[${index}]`, link);
+      });
+    }
+    
+    if (data.specialization && data.specialization.length > 0) {
+      data.specialization.forEach((spec, index) => {
+        formData.append(`specialization[${index}]`, spec);
+      });
+    }
+    
+    // Add files
+    if (data.license_documents && data.license_documents.length > 0) {
+      data.license_documents.forEach((file) => {
+        formData.append('license_documents[]', file);
+      });
+    }
+    
+    const response = await apiClient.post<ApiResponse<AdminCompany>>('/admin/companies', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return extractData<AdminCompany>(response);
   },
 };
 
