@@ -20,6 +20,7 @@ import {
   Users,
   Activity,
 } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
 
 interface NavItem {
   label: string;
@@ -140,6 +141,7 @@ export function AuthLayout({
           </div>
           
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#F0F7FF] transition-colors cursor-pointer group">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#1E3A8A] via-[#2563EB] to-[#3B82F6] flex items-center justify-center text-white text-sm font-bold shadow-md">
                 {userName.charAt(0).toUpperCase()}
