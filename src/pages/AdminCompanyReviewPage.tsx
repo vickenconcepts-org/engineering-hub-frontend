@@ -166,19 +166,19 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
         </button>
         
         {/* Header */}
-        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
-                <Building2 className="w-7 h-7 text-[#1E3A8A]" />
+        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-4 md:p-6">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
+              <div className="w-12 h-12 md:w-14 md:h-14 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center flex-shrink-0">
+                <Building2 className="w-6 h-6 md:w-7 md:h-7 text-[#1E3A8A]" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-[#334155] mb-2">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl md:text-3xl font-bold text-[#334155] mb-2 break-words">
                   {company.company_name}
                 </h1>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center gap-2 text-sm text-[#64748B]">
-                    <Calendar className="w-4 h-4" />
+                <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-3">
+                  <div className="flex items-center gap-2 text-xs md:text-sm text-[#64748B]">
+                    <Calendar className="w-3 h-3 md:w-4 md:h-4" />
                     <span>Submitted: {formatDate(company.created_at)}</span>
                   </div>
                 </div>
@@ -186,13 +186,13 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
               </div>
             </div>
             
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full sm:w-auto">
               {company.status === 'approved' && (
                 <Button
                   variant="danger"
                   onClick={() => setSuspendModalOpen(true)}
                   disabled={isProcessing}
-                  className="bg-gradient-to-r from-[#DC2626] to-[#EF4444] hover:from-[#B91C1C] hover:to-[#DC2626] text-white shadow-md hover:shadow-lg transition-all"
+                  className="bg-gradient-to-r from-[#DC2626] to-[#EF4444] hover:from-[#B91C1C] hover:to-[#DC2626] text-white shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
                 >
                   <X className="w-4 h-4 mr-1.5" />
                   Suspend
@@ -204,7 +204,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                     variant="danger"
                     onClick={() => setRejectModalOpen(true)}
                     disabled={isProcessing}
-                    className="bg-gradient-to-r from-[#DC2626] to-[#EF4444] hover:from-[#B91C1C] hover:to-[#DC2626] text-white shadow-md hover:shadow-lg transition-all"
+                    className="bg-gradient-to-r from-[#DC2626] to-[#EF4444] hover:from-[#B91C1C] hover:to-[#DC2626] text-white shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
                   >
                     <X className="w-4 h-4 mr-1.5" />
                     Reject
@@ -212,7 +212,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                   <Button 
                     onClick={() => setApproveModalOpen(true)}
                     disabled={isProcessing}
-                    className="bg-gradient-to-r from-[#16A34A] to-[#22C55E] hover:from-[#15803D] hover:to-[#16A34A] text-white shadow-md hover:shadow-lg transition-all"
+                    className="bg-gradient-to-r from-[#16A34A] to-[#22C55E] hover:from-[#15803D] hover:to-[#16A34A] text-white shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
                   >
                     <CheckCircle className="w-4 h-4 mr-1.5" />
                     Approve
@@ -223,12 +223,12 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
           </div>
         </div>
       
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 gap-4 md:gap-6">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             {/* Company Information */}
             <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
-              <div className="p-6 border-b border-[#E5E7EB]">
+              <div className="p-4 md:p-6 border-b border-[#E5E7EB]">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
                     <Building2 className="w-5 h-5 text-[#1E3A8A]" />
@@ -236,7 +236,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                   <h2 className="text-lg font-semibold text-[#334155]">Company Information</h2>
                 </div>
               </div>
-              <div className="p-6">
+              <div className="p-4 md:p-6">
               <div className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="flex items-start gap-3">
@@ -309,7 +309,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
             {/* License Documents */}
             {company.license_documents && company.license_documents.length > 0 && (
               <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
-                <div className="p-6 border-b border-[#E5E7EB]">
+                <div className="p-4 md:p-6 border-b border-[#E5E7EB]">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
                       <FileText className="w-5 h-5 text-[#1E3A8A]" />
@@ -317,7 +317,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                     <h2 className="text-lg font-semibold text-[#334155]">License Documents</h2>
                   </div>
                 </div>
-                <div className="p-6">
+                <div className="p-4 md:p-6">
                 <div className="space-y-3">
                   {company.license_documents.map((doc, index) => (
                     <div
@@ -346,7 +346,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
             {/* Portfolio Links */}
             {company.portfolio_links && company.portfolio_links.length > 0 && (
               <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
-                <div className="p-6 border-b border-[#E5E7EB]">
+                <div className="p-4 md:p-6 border-b border-[#E5E7EB]">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
                       <FileText className="w-5 h-5 text-[#1E3A8A]" />
@@ -354,7 +354,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                     <h2 className="text-lg font-semibold text-[#334155]">Portfolio Links</h2>
                   </div>
                 </div>
-                <div className="p-6">
+                <div className="p-4 md:p-6">
                 <div className="space-y-3">
                   {company.portfolio_links.map((link, index) => (
                     <div
@@ -386,10 +386,10 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
           </div>
           
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* Company Status */}
             <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
-              <div className="p-6 border-b border-[#E5E7EB]">
+              <div className="p-4 md:p-6 border-b border-[#E5E7EB]">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
                     <Shield className="w-5 h-5 text-[#1E3A8A]" />
@@ -397,7 +397,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                   <h2 className="text-lg font-semibold text-[#334155]">Company Status</h2>
                 </div>
               </div>
-              <div className="p-6">
+              <div className="p-4 md:p-6">
               <div className="space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
@@ -437,7 +437,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
             {/* User Information */}
             {company.user && (
               <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
-                <div className="p-6 border-b border-[#E5E7EB]">
+                <div className="p-4 md:p-6 border-b border-[#E5E7EB]">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10 flex items-center justify-center">
                       <User className="w-5 h-5 text-[#1E3A8A]" />
@@ -445,7 +445,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                     <h2 className="text-lg font-semibold text-[#334155]">User Information</h2>
                   </div>
                 </div>
-                <div className="p-6">
+                <div className="p-4 md:p-6">
                 <div className="space-y-4">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-[#64748B] mb-1">
