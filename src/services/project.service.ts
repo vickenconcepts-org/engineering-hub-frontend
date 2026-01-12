@@ -177,5 +177,25 @@ export const projectService = {
     );
     return extractData<Project>(response);
   },
+
+  /**
+   * Mark project as completed (client)
+   */
+  async complete(projectId: string): Promise<Project> {
+    const response = await apiClient.post<ApiResponse<Project>>(
+      `/client/projects/${projectId}/complete`
+    );
+    return extractData<Project>(response);
+  },
+
+  /**
+   * Mark project as completed (company)
+   */
+  async completeForCompany(projectId: string): Promise<Project> {
+    const response = await apiClient.post<ApiResponse<Project>>(
+      `/company/projects/${projectId}/complete`
+    );
+    return extractData<Project>(response);
+  },
 };
 

@@ -14,6 +14,7 @@ export interface CompanyProfile {
   consultation_fee?: number;
   verified_at?: string;
   status: string;
+  suspension_reason?: string;
   is_verified: boolean;
   is_approved: boolean;
   user?: {
@@ -157,6 +158,17 @@ export const companyProfileService = {
     // Use POST endpoint for FormData updates (PUT doesn't work well with FormData in Laravel)
     // Don't set Content-Type header - let axios set it automatically with boundary for FormData
     const response = await apiClient.post<ApiResponse<CompanyProfile>>('/company/profile/update', formData);
+    return extractData<CompanyProfile>(response);
+  },
+
+  /**
+   * Appeal suspension / Re-request approval
+   * Sends appeal message to admin - does NOT auto-change status
+   */
+  async appealSuspension(message?: string): Promise<CompanyProfile> {
+    const response = await apiClient.post<ApiResponse<CompanyProfile>>('/company/profile/appeal', {
+      message: message || 'I would like to appeal my suspension and request a review of my account.',
+    });
     return extractData<CompanyProfile>(response);
   },
 };

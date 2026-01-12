@@ -241,6 +241,22 @@ export const adminService = {
   },
 
   /**
+   * Lift suspension and re-approve company
+   */
+  async liftSuspension(id: string): Promise<AdminCompany> {
+    const response = await apiClient.post<ApiResponse<AdminCompany>>(`/admin/companies/${id}/lift-suspension`);
+    return extractData<AdminCompany>(response);
+  },
+
+  /**
+   * Get appeals for a company
+   */
+  async getCompanyAppeals(id: string): Promise<any[]> {
+    const response = await apiClient.get<ApiResponse<any[]>>(`/admin/companies/${id}/appeals`);
+    return extractData<any[]>(response);
+  },
+
+  /**
    * List disputes
    */
   async listDisputes(params?: {

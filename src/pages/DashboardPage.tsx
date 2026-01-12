@@ -7,6 +7,8 @@ import { Button } from '../components/Button';
 import { consultationService, Consultation } from '../services/consultation.service';
 import { projectService, Project } from '../services/project.service';
 import { parseFormattedAmount, formatAmountWithCurrency } from '../lib/money-utils';
+import { companyProfileService } from '../services/company-profile.service';
+import toast from 'react-hot-toast';
 
 interface DashboardPageProps {
   userRole?: 'client' | 'company' | 'admin' | null;
@@ -18,6 +20,7 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [companyProfileError, setCompanyProfileError] = useState(false);
+  const [companyProfile, setCompanyProfile] = useState<any>(null);
   
   useEffect(() => {
     loadData();
@@ -31,13 +34,15 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
       // Use role-specific endpoints
       if (userRole === 'company') {
         try {
-          const [consultationsData, projectsData] = await Promise.all([
+          const [consultationsData, projectsData, profileData] = await Promise.all([
             consultationService.listForCompany({ per_page: 10 }),
             projectService.listForCompany({ per_page: 10 }),
+            companyProfileService.get().catch(() => null), // Don't fail if profile doesn't exist
           ]);
           
           setConsultations(consultationsData.consultations);
           setProjects(projectsData.projects);
+          setCompanyProfile(profileData);
         } catch (error: any) {
           // Check if it's a company profile not found error
           if (error.response?.status === 404 && error.response?.data?.message?.includes('Company profile not found')) {
@@ -242,6 +247,51 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
 
   return (
     <div className="space-y-6  min-h-screen">
+      {/* Suspension Warning Banner for Companies */}
+      {userRole === 'company' && companyProfile && companyProfile.status === 'suspended' && (
+        <div className="bg-gradient-to-r from-[#DC2626] to-[#EF4444] rounded-xl border border-[#B91C1C] shadow-lg p-6 text-white">
+          <div className="flex items-start gap-4">
+            <AlertCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold mb-2">Account Suspended</h3>
+              {companyProfile.suspension_reason && (
+                <div className="bg-white/10 rounded-lg p-3 mb-4">
+                  <p className="text-xs font-medium mb-1 opacity-90">Suspension Reason:</p>
+                  <p className="text-sm">{companyProfile.suspension_reason}</p>
+                </div>
+              )}
+              <p className="text-sm opacity-90 mb-4">
+                Your company account has been suspended. You cannot receive new consultations or projects, create milestones, or submit work until the suspension is lifted.
+                <strong className="block mt-2">To appeal, please contact support. Do not submit multiple appeals.</strong>
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      await companyProfileService.appealSuspension();
+                      toast.success('Appeal submitted successfully. Our support team will review your request and contact you soon.');
+                      loadData();
+                    } catch (error: any) {
+                      toast.error(error.response?.data?.message || 'Failed to submit appeal');
+                    }
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors px-4 py-2 text-sm bg-white text-[#DC2626] hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DC2626]"
+                >
+                  Contact Support / Appeal Suspension
+                </button>
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate('/settings')}
+                  className="bg-white/20 text-white hover:bg-white/30"
+                >
+                  View Profile
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Top Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* First Card - Blue Gradient */}

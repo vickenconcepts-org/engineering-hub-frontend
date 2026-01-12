@@ -272,7 +272,39 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
               <p className="text-sm text-[#64748B]">Project ID: {project.id.slice(0, 8)}...</p>
             </div>
           </div>
-          <StatusBadge status={project.status} />
+          <div className="flex items-center gap-3">
+            <StatusBadge status={project.status} />
+            {/* Complete Project Button - Show when all milestones are released and project is not already completed */}
+            {(userRole === 'client' || userRole === 'company') && 
+             project.status !== 'completed' && 
+             milestones.length > 0 &&
+             milestones.every(m => m.status === 'released') && (
+              <Button
+                onClick={async () => {
+                  try {
+                    setIsProcessing(true);
+                    if (userRole === 'client') {
+                      await projectService.complete(project.id);
+                    } else if (userRole === 'company') {
+                      await projectService.completeForCompany(project.id);
+                    }
+                    toast.success('Project marked as completed!');
+                    loadProject();
+                  } catch (error: any) {
+                    console.error('Failed to complete project:', error);
+                    toast.error(error.response?.data?.message || 'Failed to mark project as completed');
+                  } finally {
+                    setIsProcessing(false);
+                  }
+                }}
+                disabled={isProcessing}
+                className="bg-gradient-to-r from-[#16A34A] to-[#22C55E] hover:from-[#15803D] hover:to-[#16A34A] text-white shadow-md hover:shadow-lg transition-all"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                {isProcessing ? 'Completing...' : 'Mark as Completed'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
       

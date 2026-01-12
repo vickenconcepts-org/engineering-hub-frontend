@@ -607,6 +607,8 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
         return 'yellow';
       case 'rejected':
         return 'red';
+      case 'suspended':
+        return 'red';
       default:
         return 'gray';
     }
@@ -627,33 +629,78 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
         
         {/* Profile Status Banner */}
         {profile && (
-          <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
-            <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                profile.is_approved 
-                  ? 'bg-gradient-to-br from-[#16A34A]/10 to-[#22C55E]/10' 
-                  : 'bg-gradient-to-br from-[#F59E0B]/10 to-[#FBBF24]/10'
-              }`}>
-                {profile.is_approved ? (
-                  <CheckCircle className="w-6 h-6 text-[#16A34A]" />
-                ) : (
-                  <AlertCircle className="w-6 h-6 text-[#F59E0B]" />
-                )}
+          <>
+            {/* Suspension Warning Banner */}
+            {profile.status === 'suspended' && (
+              <div className="bg-gradient-to-r from-[#DC2626] to-[#EF4444] rounded-xl border border-[#B91C1C] shadow-lg p-6 text-white mb-6">
+                <div className="flex items-start gap-4">
+                  <AlertCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold mb-2">Account Suspended</h3>
+                    {profile.suspension_reason && (
+                      <div className="bg-white/10 rounded-lg p-3 mb-4">
+                        <p className="text-xs font-medium mb-1 opacity-90">Suspension Reason:</p>
+                        <p className="text-sm">{profile.suspension_reason}</p>
+                      </div>
+                    )}
+                    <p className="text-sm opacity-90 mb-4">
+                      Your company account has been suspended. You cannot receive new consultations or projects, create milestones, or submit work until the suspension is lifted.
+                      <strong className="block mt-2">To appeal, please contact support. Do not submit multiple appeals.</strong>
+                    </p>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await companyProfileService.appealSuspension();
+                          toast.success('Appeal submitted successfully. Our support team will review your request and contact you soon.');
+                          loadProfile();
+                        } catch (error: any) {
+                          toast.error(error.response?.data?.message || 'Failed to submit appeal');
+                        }
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors px-4 py-2 text-sm bg-white text-[#DC2626] hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DC2626]"
+                    >
+                      Contact Support / Appeal Suspension
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-[#334155] mb-1">
-                  Status: <StatusBadge status={profile.status} color={getStatusColor(profile.status)} />
-                </p>
-                <p className="text-xs text-[#64748B]">
-                  {profile.is_approved 
-                    ? 'Your profile is verified and active'
-                    : profile.is_verified
-                    ? 'Your profile is verified and awaiting approval'
-                    : 'Your profile is pending admin review'}
-                </p>
+            )}
+            
+            {/* Regular Status Banner */}
+            <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                  profile.is_approved 
+                    ? 'bg-gradient-to-br from-[#16A34A]/10 to-[#22C55E]/10' 
+                    : profile.status === 'suspended'
+                    ? 'bg-gradient-to-br from-[#DC2626]/10 to-[#EF4444]/10'
+                    : 'bg-gradient-to-br from-[#F59E0B]/10 to-[#FBBF24]/10'
+                }`}>
+                  {profile.is_approved ? (
+                    <CheckCircle className="w-6 h-6 text-[#16A34A]" />
+                  ) : profile.status === 'suspended' ? (
+                    <AlertCircle className="w-6 h-6 text-[#DC2626]" />
+                  ) : (
+                    <AlertCircle className="w-6 h-6 text-[#F59E0B]" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-[#334155] mb-1">
+                    Status: <StatusBadge status={profile.status} color={getStatusColor(profile.status)} />
+                  </p>
+                  <p className="text-xs text-[#64748B]">
+                    {profile.is_approved 
+                      ? 'Your profile is verified and active'
+                      : profile.status === 'suspended'
+                      ? 'Your account has been suspended'
+                      : profile.is_verified
+                      ? 'Your profile is verified and awaiting approval'
+                      : 'Your profile is pending admin review'}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          </>
         )}
       
         {/* Profile Form */}
@@ -733,21 +780,21 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,.jpg,.jpeg,.png"
+                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/jpg,image/png"
                   onChange={handleFileChange}
-                  disabled={profile?.is_approved}
+                  disabled={profile?.is_approved || profile?.status === 'suspended'}
                   className="hidden"
                   id="license-upload"
                 />
-                <label htmlFor="license-upload">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={profile?.is_approved}
-                    className="cursor-pointer border-[#E5E7EB] hover:bg-[#F8FAFC]"
-                  >
-                    Choose Files
-                  </Button>
+                <label 
+                  htmlFor="license-upload"
+                  className={`inline-flex items-center justify-center px-4 py-2 border border-[#E5E7EB] rounded-lg text-sm font-medium text-[#334155] bg-white hover:bg-[#F8FAFC] transition-colors ${
+                    profile?.is_approved || profile?.status === 'suspended' 
+                      ? 'opacity-50 cursor-not-allowed pointer-events-none' 
+                      : 'cursor-pointer'
+                  }`}
+                >
+                  Choose Files
                 </label>
               </div>
               

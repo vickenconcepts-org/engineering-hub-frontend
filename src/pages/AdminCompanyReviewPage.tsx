@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Building2, Phone, Mail, FileText, CheckCircle, X, Shield, User, Calendar } from 'lucide-react';
+import { ArrowLeft, Building2, Phone, Mail, FileText, CheckCircle, X, Shield, User, Calendar, MessageSquare, AlertCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { Textarea } from '../components/Textarea';
@@ -18,7 +18,7 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
   const [suspendModalOpen, setSuspendModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [suspendReason, setSuspendReason] = useState('');
-  const [company, setCompany] = useState<AdminCompany | null>(null);
+  const [company, setCompany] = useState<AdminCompany & { appeals?: any[] } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -196,6 +196,29 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                 >
                   <X className="w-4 h-4 mr-1.5" />
                   Suspend
+                </Button>
+              )}
+              {company.status === 'suspended' && (
+                <Button
+                  onClick={async () => {
+                    if (!company) return;
+                    try {
+                      setIsProcessing(true);
+                      await adminService.liftSuspension(company.id);
+                      toast.success('Suspension lifted and company re-approved successfully!');
+                      await loadCompany();
+                    } catch (error: any) {
+                      console.error('Failed to lift suspension:', error);
+                      toast.error(error?.response?.data?.message || 'Failed to lift suspension');
+                    } finally {
+                      setIsProcessing(false);
+                    }
+                  }}
+                  disabled={isProcessing}
+                  className="w-full sm:w-auto bg-gradient-to-r from-[#16A34A] to-[#22C55E] hover:from-[#15803D] hover:to-[#16A34A] text-white shadow-md hover:shadow-lg transition-all"
+                >
+                  <CheckCircle className="w-4 h-4 mr-1.5" />
+                  {isProcessing ? 'Lifting...' : 'Lift Suspension & Re-approve'}
                 </Button>
               )}
               {company.status === 'pending' && (
@@ -470,6 +493,51 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
                     </div>
                   )}
                 </div>
+                </div>
+              </div>
+            )}
+
+            {/* Appeals Section */}
+            {(company.status === 'suspended' || company.status === 'rejected') && company.appeals && company.appeals.length > 0 && (
+              <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+                <div className="p-4 md:p-6 border-b border-[#E5E7EB]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#DC2626]/10 to-[#EF4444]/10 flex items-center justify-center">
+                      <MessageSquare className="w-5 h-5 text-[#DC2626]" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-[#334155]">Appeal Submissions</h2>
+                  </div>
+                </div>
+                <div className="p-4 md:p-6">
+                  <div className="space-y-4">
+                    {company.appeals.map((appeal: any, index: number) => (
+                      <div key={appeal.id || index} className="p-4 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]">
+                        <div className="flex items-start gap-3 mb-3">
+                          <AlertCircle className="w-5 h-5 text-[#DC2626] mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-xs text-[#64748B] mb-2">
+                              Submitted: {formatDate(appeal.created_at)}
+                            </p>
+                            {appeal.metadata?.suspension_reason && (
+                              <div className="mb-3 p-2 bg-[#FEF2F2] rounded border border-[#FECACA]">
+                                <p className="text-xs font-medium text-[#991B1B] mb-1">Original Suspension Reason:</p>
+                                <p className="text-xs text-[#DC2626]">{appeal.metadata.suspension_reason}</p>
+                              </div>
+                            )}
+                            {appeal.metadata?.appeal_message && (
+                              <div className="mb-2">
+                                <p className="text-xs font-medium text-[#64748B] mb-1">Appeal Message:</p>
+                                <p className="text-sm text-[#334155] whitespace-pre-wrap">{appeal.metadata.appeal_message}</p>
+                              </div>
+                            )}
+                            {!appeal.metadata?.appeal_message && (
+                              <p className="text-sm text-[#64748B] italic">No message provided</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
