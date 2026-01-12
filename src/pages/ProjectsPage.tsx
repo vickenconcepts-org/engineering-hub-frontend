@@ -4,6 +4,7 @@ import { FolderKanban, TrendingUp, CheckCircle, DollarSign } from 'lucide-react'
 import { StatusBadge } from '../components/StatusBadge';
 import { Table, Pagination } from '../components/Table';
 import { projectService, Project } from '../services/project.service';
+import { formatAmountWithCurrency, parseFormattedAmount } from '../lib/money-utils';
 
 interface ProjectsPageProps {
   userRole?: 'client' | 'company' | 'admin' | null;
@@ -61,13 +62,13 @@ export function ProjectsPage({ userRole }: ProjectsPageProps) {
   
   const formatBudget = (project: Project): string => {
     if (project.budget_min && project.budget_max) {
-      return `₦${project.budget_min.toLocaleString()} - ₦${project.budget_max.toLocaleString()}`;
+      return `${formatAmountWithCurrency(project.budget_min)} - ${formatAmountWithCurrency(project.budget_max)}`;
     }
     if (project.budget_min) {
-      return `₦${project.budget_min.toLocaleString()}+`;
+      return `${formatAmountWithCurrency(project.budget_min)}+`;
     }
     if (project.budget_max) {
-      return `Up to ₦${project.budget_max.toLocaleString()}`;
+      return `Up to ${formatAmountWithCurrency(project.budget_max)}`;
     }
     return 'Not specified';
   };
@@ -89,17 +90,24 @@ export function ProjectsPage({ userRole }: ProjectsPageProps) {
     (p) => p.status === 'completed'
   ).length;
   
+  // Calculate total investment from actual milestone escrow payments (what was actually paid)
   const totalInvestment = projects.reduce((total, project) => {
-    const budgetMax = typeof project.budget_max === 'number' && !isNaN(project.budget_max) ? project.budget_max : 0;
-    const budgetMin = typeof project.budget_min === 'number' && !isNaN(project.budget_min) ? project.budget_min : 0;
+    if (!project.milestones || project.milestones.length === 0) {
+      return total;
+    }
     
-    if (budgetMax > 0) {
-      return total + budgetMax;
-    }
-    if (budgetMin > 0) {
-      return total + budgetMin;
-    }
-    return total;
+    // Sum up all milestone amounts that have escrow (actually paid)
+    const projectTotal = project.milestones.reduce((milestoneTotal, milestone) => {
+      // Only count milestones that have escrow (funded/paid)
+      if (milestone.escrow && (milestone.escrow.status === 'held' || milestone.escrow.status === 'released')) {
+        return milestoneTotal + parseFormattedAmount(milestone.escrow.amount);
+      }
+      // If no escrow but milestone has an amount, count it (for pending milestones that might be paid)
+      // Actually, let's only count what's actually been paid (has escrow)
+      return milestoneTotal;
+    }, 0);
+    
+    return total + projectTotal;
   }, 0);
   
   const formatInvestment = (amount: number): string => {
@@ -112,7 +120,7 @@ export function ProjectsPage({ userRole }: ProjectsPageProps) {
     if (amount >= 1000) {
       return `₦${(amount / 1000).toFixed(0)}K`;
     }
-    return `₦${amount.toLocaleString()}`;
+    return formatAmountWithCurrency(amount);
   };
   
   const columns = [
@@ -200,7 +208,7 @@ export function ProjectsPage({ userRole }: ProjectsPageProps) {
                 <p className="text-4xl font-bold mb-1">{activeProjects}</p>
                 <div className="flex items-center gap-2 text-xs opacity-80">
                   <TrendingUp className="w-3 h-3" />
-                  <span>{projects.length} total</span>
+                  <span>{paginationMeta.total || projects.length} total</span>
                 </div>
               </div>
               <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">

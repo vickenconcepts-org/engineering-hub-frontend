@@ -6,6 +6,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
 import { consultationService, Consultation } from '../services/consultation.service';
 import { projectService, Project } from '../services/project.service';
+import { parseFormattedAmount, formatAmountWithCurrency } from '../lib/money-utils';
 
 interface DashboardPageProps {
   userRole?: 'client' | 'company' | 'admin' | null;
@@ -73,22 +74,13 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
     (p) => p.status === 'active' || p.status === 'draft'
   ).length;
   
-  // Helper function to parse formatted money string back to number
-  const parseMoneyAmount = (amount: string | number | null | undefined): number => {
-    if (amount === null || amount === undefined) return 0;
-    if (typeof amount === 'number') return amount;
-    // Remove currency symbol, thousand separators, and parse
-    const cleaned = String(amount).replace(/[₦,\s]/g, '');
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
-  };
 
   // Calculate escrow balance (sum of funded but not released escrows)
   const escrowBalance = projects.reduce((total, project) => {
     if (!project.milestones) return total;
     return total + project.milestones.reduce((milestoneTotal, milestone) => {
       if (milestone.escrow && milestone.escrow.status === 'held') {
-        return milestoneTotal + parseMoneyAmount(milestone.escrow.amount);
+        return milestoneTotal + parseFormattedAmount(milestone.escrow.amount);
       }
       return milestoneTotal;
     }, 0);
@@ -311,7 +303,7 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-[#1E3A8A] mb-2">Escrow Balance</p>
-              <p className="text-4xl font-bold text-[#1E3A8A] mb-3">₦{escrowBalance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-4xl font-bold text-[#1E3A8A] mb-3">₦{escrowBalance.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
               <div className="space-y-1">
                 <p className="text-sm text-[#64748B]">Held in escrow</p>
                 <p className="text-sm text-[#1E3A8A]">{pendingApprovals} pending</p>

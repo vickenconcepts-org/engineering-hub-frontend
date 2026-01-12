@@ -8,6 +8,7 @@ import { Modal } from '../components/Modal';
 import { Textarea } from '../components/Textarea';
 import { Input } from '../components/Input';
 import { adminService, Dispute } from '../services/admin.service';
+import { formatAmountWithCurrency } from '../lib/money-utils';
 
 interface AdminDisputePageProps {
   onNavigate: (path: string) => void;
@@ -148,7 +149,7 @@ export function AdminDisputePage({ onNavigate }: AdminDisputePageProps) {
                 Disputed Milestone: {dispute.milestone.title}
               </p>
               <p className="text-sm text-[#64748B]">
-                ₦{dispute.milestone.amount.toLocaleString()} in escrow is on hold pending resolution.
+                {formatAmountWithCurrency(dispute.milestone.amount)} in escrow is on hold pending resolution.
               </p>
             </div>
           </div>
@@ -225,7 +226,7 @@ export function AdminDisputePage({ onNavigate }: AdminDisputePageProps) {
                       </p>
                       <p className="text-sm text-[#334155]">{dispute.milestone.title}</p>
                       <p className="text-xs text-[#64748B] mt-1">
-                        Amount: ₦{dispute.milestone.amount.toLocaleString()}
+                        Amount: {formatAmountWithCurrency(dispute.milestone.amount)}
                       </p>
                     </div>
                   )}
@@ -337,7 +338,7 @@ export function AdminDisputePage({ onNavigate }: AdminDisputePageProps) {
                           {dispute.milestone.title}
                         </p>
                         <p className="text-xs text-[#64748B] mt-1">
-                          Amount: ₦{dispute.milestone.amount.toLocaleString()}
+                          Amount: {formatAmountWithCurrency(dispute.milestone.amount)}
                         </p>
                       </div>
                     )}

@@ -8,6 +8,7 @@ import { Select } from '../components/Select';
 import { StatusBadge } from '../components/StatusBadge';
 import { Table, Pagination } from '../components/Table';
 import { adminService, Dispute } from '../services/admin.service';
+import { formatAmountWithCurrency } from '../lib/money-utils';
 
 interface AdminDisputesListPageProps {
   onNavigate: (path: string) => void;
@@ -134,7 +135,7 @@ export function AdminDisputesListPage({ onNavigate }: AdminDisputesListPageProps
       <div>
         <p className="text-sm text-[#334155]">{dispute.milestone.title}</p>
         <p className="text-xs text-[#64748B]">
-          ₦{dispute.milestone.amount.toLocaleString()}
+          {formatAmountWithCurrency(dispute.milestone.amount)}
         </p>
       </div>
     ) : (

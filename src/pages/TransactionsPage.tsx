@@ -4,6 +4,7 @@ import { Table, Pagination } from '../components/Table';
 import { StatusBadge } from '../components/StatusBadge';
 import { transactionService, Transaction } from '../services/transaction.service';
 import { Receipt, DollarSign, ArrowDownCircle, ArrowUpCircle, CreditCard, XCircle, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { formatAmountWithCurrency, parseFormattedAmount } from '../lib/money-utils';
 
 interface TransactionsPageProps {
   onNavigate: (path: string) => void;
@@ -221,16 +222,16 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
         return (
           <div className="flex flex-col gap-1">
             <span className={`font-semibold ${getAmountColor(transaction.type)}`}>
-              {isOutgoing ? '-' : '+'}₦{transaction.amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {isOutgoing ? '-' : '+'}{formatAmountWithCurrency(transaction.amount)}
             </span>
             {showBreakdown && transaction.total_amount && (
               <div className="text-xs text-[#64748B]">
                 {transaction.type === 'platform_fee' ? (
-                  <span>From: ₦{transaction.total_amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span>From: {formatAmountWithCurrency(transaction.total_amount)}</span>
                 ) : transaction.platform_fee && transaction.platform_fee > 0 ? (
                   <span>
-                    Total: ₦{transaction.total_amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} • 
-                    Fee: ₦{transaction.platform_fee.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Total: {formatAmountWithCurrency(transaction.total_amount)} • 
+                    Fee: {formatAmountWithCurrency(transaction.platform_fee)}
                   </span>
                 ) : null}
               </div>
@@ -317,7 +318,7 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
               <div>
                 <p className="text-sm font-medium text-[#1E3A8A] mb-2">Net Amount</p>
                 <p className={`text-3xl font-bold mb-1 ${validNetAmount >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                  {validNetAmount >= 0 ? '+' : ''}₦{Math.abs(validNetAmount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {validNetAmount >= 0 ? '+' : ''}{formatAmountWithCurrency(Math.abs(validNetAmount))}
                 </p>
                 <p className="text-xs text-[#64748B] mt-1">Total balance</p>
               </div>

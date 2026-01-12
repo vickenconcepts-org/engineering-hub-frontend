@@ -9,6 +9,7 @@ import { Input } from '../components/Input';
 import { Textarea } from '../components/Textarea';
 import { consultationService, Consultation } from '../services/consultation.service';
 import { projectService } from '../services/project.service';
+import { formatAmountWithCurrency, parseFormattedAmount } from '../lib/money-utils';
 
 interface ConsultationDetailPageProps {
   consultationId: string; // UUID
@@ -244,7 +245,7 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                     </div>
                     <div className="flex-1">
                       <p className="text-xs text-[#64748B] mb-1">Consultation Fee</p>
-                      <p className="text-sm font-medium text-[#334155]">₦{consultation.price.toLocaleString()}</p>
+                      <p className="text-sm font-medium text-[#334155]">{formatAmountWithCurrency(consultation.price)}</p>
                       {/* Platform fee breakdown only visible to companies */}
                       {userRole !== 'client' && consultation.platform_fee && consultation.platform_fee > 0 && consultation.is_paid && (
                         <div className="mt-2 pt-2 border-t border-[#E5E7EB] space-y-1">
@@ -253,7 +254,7 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                               Platform Fee ({consultation.platform_fee_percentage || 0}%)
                             </span>
                             <span className="text-xs font-medium text-[#F97316]">
-                              -₦{consultation.platform_fee.toLocaleString()}
+                              -{formatAmountWithCurrency(consultation.platform_fee)}
                             </span>
                           </div>
                           <div className="flex justify-between items-center pt-1">
@@ -261,7 +262,7 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                               Amount You'll Receive
                             </span>
                             <span className="text-xs font-bold text-[#334155]">
-                              ₦{(consultation.net_amount || (consultation.price - consultation.platform_fee)).toLocaleString()}
+                              {formatAmountWithCurrency(consultation.net_amount || (parseFormattedAmount(consultation.price) - parseFormattedAmount(consultation.platform_fee)))}
                             </span>
                           </div>
                         </div>
@@ -325,7 +326,7 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
                     className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
                   >
                     <DollarSign className="w-4 h-4 mr-2" />
-                    Pay Consultation Fee (₦{consultation.price.toLocaleString()})
+                    Pay Consultation Fee ({formatAmountWithCurrency(consultation.price)})
                   </Button>
                 </div>
               )}

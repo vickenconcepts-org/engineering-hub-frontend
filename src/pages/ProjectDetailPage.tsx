@@ -9,6 +9,7 @@ import { Textarea } from '../components/Textarea';
 import { projectService, Project } from '../services/project.service';
 import { milestoneService } from '../services/milestone.service';
 import { Milestone } from '../services/project.service';
+import { formatAmountWithCurrency, parseFormattedAmount } from '../lib/money-utils';
 
 interface ProjectDetailPageProps {
   userRole?: 'client' | 'company' | 'admin' | null;
@@ -87,29 +88,18 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
     });
   };
   
-  // Helper function to parse escrow amount
-  const parseEscrowAmount = (amount: string | number | null | undefined): number => {
-    if (amount === null || amount === undefined) return 0;
-    if (typeof amount === 'number') {
-      return isNaN(amount) ? 0 : amount;
-    }
-    // Remove currency symbol, thousand separators, and parse
-    const cleaned = String(amount).replace(/[₦,\s]/g, '');
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
-  };
 
   // Calculate escrow totals
   const escrowTotals = project ? {
     funded: project.milestones?.reduce((total, m) => {
       if (m.escrow && (m.escrow.status === 'held' || m.escrow.status === 'released')) {
-        return total + parseEscrowAmount(m.escrow.amount);
+        return total + parseFormattedAmount(m.escrow.amount);
       }
       return total;
     }, 0) || 0,
     released: project.milestones?.reduce((total, m) => {
       if (m.escrow && m.escrow.status === 'released') {
-        return total + parseEscrowAmount(m.escrow.amount);
+        return total + parseFormattedAmount(m.escrow.amount);
       }
       return total;
     }, 0) || 0,
@@ -507,7 +497,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                             <div className="bg-gradient-to-br from-[#1E3A8A]/5 to-[#2563EB]/5 rounded-lg p-4 border border-[#E5E7EB] min-w-[120px]">
                               <p className="text-xs text-[#64748B] mb-1 font-medium">Amount</p>
                               <p className="text-xl font-bold text-[#1E3A8A]">
-                                ₦{milestone.amount.toLocaleString()}
+                                {formatAmountWithCurrency(milestone.amount)}
                               </p>
                             </div>
                           </div>

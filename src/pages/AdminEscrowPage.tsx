@@ -9,6 +9,7 @@ import { adminService, MilestoneForRelease } from '../services/admin.service';
 import { paymentAccountService, PaymentAccount } from '../services/payment-account.service';
 import { DollarSign, Eye, CheckCircle, XCircle, Clock, Shield, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatAmountWithCurrency, parseFormattedAmount, isFormattedAmount } from '../lib/money-utils';
 
 export function AdminEscrowPage() {
   const navigate = useNavigate();
@@ -92,12 +93,63 @@ export function AdminEscrowPage() {
     });
   };
 
+  /**
+   * Parse formatted amount string (e.g., "10K" -> 10000, "1.5M" -> 1500000)
+   * Handles K (thousands), M (millions), B (billions)
+   */
+  const parseFormattedAmount = (amount: string | number): number => {
+    if (typeof amount === 'number') {
+      return amount;
+    }
+    
+    if (!amount || amount === '') {
+      return 0;
+    }
+
+    const str = amount.toString().trim().toUpperCase();
+    
+    // Check if it's already a plain number (no K/M/B suffix)
+    if (!/[KMB]/.test(str)) {
+      return parseFloat(str) || 0;
+    }
+
+    // Extract number and suffix
+    const match = str.match(/^([\d.]+)([KMB])?$/);
+    if (!match) {
+      return 0;
+    }
+
+    const numValue = parseFloat(match[1]);
+    const suffix = match[2];
+
+    switch (suffix) {
+      case 'K':
+        return numValue * 1000;
+      case 'M':
+        return numValue * 1000000;
+      case 'B':
+        return numValue * 1000000000;
+      default:
+        return numValue;
+    }
+  };
+
+  /**
+   * Check if amount is already formatted (contains K, M, or B)
+   */
+  const isFormattedAmount = (amount: string | number): boolean => {
+    if (typeof amount === 'number') {
+      return false;
+    }
+    return /[KMB]/i.test(amount.toString());
+  };
+
   const calculateTotalHeld = () => {
     return milestones
       .filter(m => m.escrow?.status === 'held')
       .reduce((sum, m) => {
         const amount = m.escrow?.amount || m.amount || 0;
-        return sum + parseFloat(amount.toString());
+        return sum + parseFormattedAmount(amount.toString());
       }, 0);
   };
 
@@ -106,7 +158,7 @@ export function AdminEscrowPage() {
       .filter(m => m.escrow?.status === 'released')
       .reduce((sum, m) => {
         const amount = m.escrow?.amount || m.amount || 0;
-        return sum + parseFloat(amount.toString());
+        return sum + parseFormattedAmount(amount.toString());
       }, 0);
   };
 
@@ -193,9 +245,16 @@ export function AdminEscrowPage() {
         // Get amount from escrow first, then fallback to milestone amount
         const amount = milestone.escrow?.amount || milestone.amount || 0;
         
+        // If amount is already formatted (contains K/M/B), display it directly
+        // Otherwise, format it as a number
+        const amountStr = amount.toString();
+        const displayAmount = isFormattedAmount(amountStr) 
+          ? amountStr 
+          : parseFloat(amountStr).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
         return (
         <span className="font-semibold text-[#334155]">
-            ₦{parseFloat(amount.toString()).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ₦{displayAmount}
         </span>
         );
       },
@@ -407,7 +466,14 @@ export function AdminEscrowPage() {
             </p>
             <div className="space-y-1 text-sm text-[#64748B]">
               <p>Milestone: {selectedMilestone?.title}</p>
-              <p>Amount: ₦{selectedMilestone?.escrow?.amount.toLocaleString()}</p>
+              <p>Amount: ₦{(() => {
+                const amount = selectedMilestone?.escrow?.amount;
+                if (!amount) return '0.00';
+                const amountStr = amount.toString();
+                return isFormattedAmount(amountStr) 
+                  ? amountStr 
+                  : parseFloat(amountStr).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              })()}</p>
               <p>Status: {selectedMilestone?.status}</p>
             </div>
           </div>

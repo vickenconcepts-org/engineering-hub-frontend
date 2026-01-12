@@ -14,6 +14,7 @@ import { getFileUrl } from '../lib/file-utils';
 import apiClient from '../lib/api-client';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
+import { formatAmountWithCurrency, parseFormattedAmount } from '../lib/money-utils';
 
 interface MilestoneDetailPageProps {
   onNavigate: (path: string) => void;
@@ -602,7 +603,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                     Milestone Amount
                   </p>
                   <p className="text-3xl font-semibold text-[#334155]">
-                    ₦{milestone.amount.toLocaleString()}
+                    {formatAmountWithCurrency(milestone.amount)}
                   </p>
                 </div>
                 
@@ -611,7 +612,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-[#64748B]">Escrow Amount</span>
                       <span className="text-sm font-medium text-[#334155]">
-                        ₦{milestone.escrow.amount.toLocaleString()}
+                        {formatAmountWithCurrency(milestone.escrow.amount)}
                       </span>
                     </div>
                     {milestone.escrow.platform_fee && milestone.escrow.platform_fee > 0 && (
@@ -621,7 +622,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                             Platform Fee ({milestone.escrow.platform_fee_percentage || 0}%)
                           </span>
                           <span className="text-sm font-medium text-[#F97316]">
-                            -₦{milestone.escrow.platform_fee.toLocaleString()}
+                            -{formatAmountWithCurrency(milestone.escrow.platform_fee)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between pt-2 border-t border-[#E5E7EB]">
@@ -629,7 +630,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                             {userRole === 'client' ? 'Amount to Company' : 'Amount You\'ll Receive'}
                           </span>
                           <span className="text-sm font-bold text-[#334155]">
-                            ₦{(milestone.escrow.net_amount || (milestone.escrow.amount - milestone.escrow.platform_fee)).toLocaleString()}
+                            {formatAmountWithCurrency(milestone.escrow.net_amount || (parseFormattedAmount(milestone.escrow.amount) - parseFormattedAmount(milestone.escrow.platform_fee)))}
                           </span>
                         </div>
                       </>
@@ -800,7 +801,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-[#64748B]">Milestone Amount</span>
                       <span className="text-sm font-medium text-[#334155]">
-                        ₦{milestone.amount.toLocaleString()}
+                        {formatAmountWithCurrency(milestone.amount)}
                       </span>
                     </div>
                     <div className="text-xs text-[#64748B] pt-2 border-t border-[#E5E7EB]">
@@ -819,7 +820,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                     }
                   }}
                 >
-                  Fund Escrow (₦{milestone.amount.toLocaleString()})
+                  Fund Escrow ({formatAmountWithCurrency(milestone.amount)})
                 </Button>
               </CardContent>
             </Card>
@@ -1088,7 +1089,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
         onClose={() => !isProcessing && setApproveModalOpen(false)}
         title="Approve Milestone"
         primaryAction={{
-          label: isProcessing ? 'Processing...' : `Approve & Release ₦${milestone.amount.toLocaleString()}`,
+          label: isProcessing ? 'Processing...' : `Approve & Release ${formatAmountWithCurrency(milestone.amount)}`,
           onClick: handleApprove,
           disabled: isProcessing,
         }}
@@ -1101,7 +1102,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
         <div className="space-y-4">
           <p className="text-sm text-[#64748B]">
             You are about to approve this milestone. Admin will release{' '}
-            <strong className="text-[#334155]">₦{milestone.amount.toLocaleString()}</strong>{' '}
+            <strong className="text-[#334155]">{formatAmountWithCurrency(milestone.amount)}</strong>{' '}
             from escrow to the construction company.
           </p>
           
@@ -1378,7 +1379,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
               </p>
               <div className="space-y-1 text-sm text-[#64748B]">
                 <p>Milestone: {milestone?.title}</p>
-                <p>Amount: ₦{milestone?.escrow?.amount.toLocaleString()}</p>
+                <p>Amount: {formatAmountWithCurrency(milestone?.escrow?.amount)}</p>
                 <p>Status: {milestone?.status}</p>
               </div>
             </div>
@@ -1508,7 +1509,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
               </p>
               <div className="space-y-1 text-sm text-[#64748B]">
                 <p>Milestone: {milestone?.title}</p>
-                <p>Amount: ₦{milestone?.escrow?.amount.toLocaleString()}</p>
+                <p>Amount: {formatAmountWithCurrency(milestone?.escrow?.amount)}</p>
               </div>
             </div>
 
@@ -1628,7 +1629,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
               </p>
               <div className="space-y-1 text-sm text-[#64748B]">
                 <p>Milestone: {milestone?.title}</p>
-                <p>Amount: ₦{milestone?.escrow?.amount.toLocaleString()}</p>
+                <p>Amount: {formatAmountWithCurrency(milestone?.escrow?.amount)}</p>
               </div>
             </div>
 
