@@ -28,6 +28,7 @@ import { AdminPlatformSettingsPage } from './pages/AdminPlatformSettingsPage';
 import { AdminAuditLogsPage } from './pages/AdminAuditLogsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 
 type UserRole = 'client' | 'company' | 'admin' | null;
 
@@ -221,6 +222,7 @@ export default function App() {
         <Route path="/projects/:id/create-milestones" element={<ProtectedRoute><CreateMilestonesWrapper /></ProtectedRoute>} />
         <Route path="/milestones/:id" element={<ProtectedRoute><MilestoneDetailWrapper /></ProtectedRoute>} />
         <Route path="/transactions" element={<ProtectedRoute><TransactionsWrapper /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/messages" element={
           <ProtectedRoute>
