@@ -51,11 +51,13 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
     try {
       setIsProcessing(true);
       await adminService.approveCompany(company.id);
-      toast.success('Company approved successfully!');
+      toast.success('Company approved and verified successfully!');
       setApproveModalOpen(false);
-      onNavigate('/admin/companies');
-    } catch (error) {
+      // Reload company data to show updated verification status
+      await loadCompany();
+    } catch (error: any) {
       console.error('Failed to approve company:', error);
+      toast.error(error?.response?.data?.message || 'Failed to approve company');
     } finally {
       setIsProcessing(false);
     }
@@ -93,9 +95,10 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
       toast.success('Company suspended successfully');
       setSuspendModalOpen(false);
       setSuspendReason('');
-      loadCompany();
-    } catch (error) {
+      await loadCompany();
+    } catch (error: any) {
       console.error('Failed to suspend company:', error);
+      toast.error(error?.response?.data?.message || 'Failed to suspend company');
     } finally {
       setIsProcessing(false);
     }
@@ -540,6 +543,58 @@ export function AdminCompanyReviewPage({ onNavigate }: AdminCompanyReviewPagePro
             onChange={(e) => setRejectionReason(e.target.value)}
             rows={6}
             helperText="This will be sent to the company."
+            required
+          />
+        </div>
+      </Modal>
+      
+      {/* Suspend Modal */}
+      <Modal
+        isOpen={suspendModalOpen}
+        onClose={() => {
+          setSuspendModalOpen(false);
+          setSuspendReason('');
+        }}
+        title="Suspend Company"
+        primaryAction={{
+          label: isProcessing ? 'Suspending...' : 'Suspend Company',
+          onClick: handleSuspend,
+          variant: 'danger',
+          disabled: isProcessing,
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: () => {
+            setSuspendModalOpen(false);
+            setSuspendReason('');
+          },
+          disabled: isProcessing,
+        }}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[#64748B]">
+            Are you sure you want to suspend <strong className="text-[#334155]">{company.company_name}</strong>?
+          </p>
+          
+          <div className="bg-[#FEF2F2] rounded-lg p-4 border border-[#DC2626]/20">
+            <p className="text-sm text-[#334155]">
+              <strong>This will:</strong>
+            </p>
+            <ul className="mt-2 space-y-1 text-sm text-[#334155]">
+              <li>• Prevent company from accepting consultations</li>
+              <li>• Hide company from client searches</li>
+              <li>• Suspend the associated user account</li>
+              <li>• Prevent new project creation</li>
+            </ul>
+          </div>
+          
+          <Textarea
+            label="Suspension Reason"
+            placeholder="Explain why the company is being suspended..."
+            value={suspendReason}
+            onChange={(e) => setSuspendReason(e.target.value)}
+            rows={6}
+            helperText="This reason will be logged for audit purposes."
             required
           />
         </div>
