@@ -463,5 +463,43 @@ export const adminService = {
     });
     return extractData<AdminCompany>(response);
   },
+
+  /**
+   * List audit logs
+   */
+  async listAuditLogs(params?: {
+    action?: string;
+    entity_type?: string;
+    entity_id?: string;
+    user_id?: string;
+    from_date?: string;
+    to_date?: string;
+    per_page?: number;
+    page?: number;
+  }): Promise<{ logs: AuditLog[]; meta: any }> {
+    const response = await apiClient.get<ApiResponse<AuditLog[]>>('/admin/audit-logs', { params });
+    return {
+      logs: extractData<AuditLog[]>(response),
+      meta: extractMeta(response),
+    };
+  },
 };
 
+/**
+ * Audit Log interface
+ */
+export interface AuditLog {
+  id: string;
+  user_id?: string;
+  action: string;
+  entity_type: string;
+  entity_id?: string;
+  metadata?: Record<string, any>;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  created_at: string;
+  updated_at: string;
+}

@@ -18,6 +18,7 @@ import {
   Home,
   ChevronDown,
   Users,
+  Activity,
 } from 'lucide-react';
 
 interface NavItem {
@@ -99,6 +100,7 @@ export function AuthLayout({
       { label: 'Companies', icon: <Building2 className="w-5 h-5" />, path: '/admin/companies', adminOnly: true },
       { label: 'Escrow', icon: <Shield className="w-5 h-5" />, path: '/admin/escrow', adminOnly: true },
       { label: 'Disputes', icon: <AlertCircle className="w-5 h-5" />, path: '/admin/disputes', adminOnly: true },
+      { label: 'Audit Logs', icon: <Activity className="w-5 h-5" />, path: '/admin/audit-logs', adminOnly: true },
       { label: 'Platform Settings', icon: <Settings className="w-5 h-5" />, path: '/admin/platform-settings', adminOnly: true }
     );
   }
