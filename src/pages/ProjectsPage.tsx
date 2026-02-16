@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FolderKanban, TrendingUp, CheckCircle, DollarSign } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
+import { Button } from '../components/Button';
 import { Table, Pagination } from '../components/Table';
 import { projectService, Project } from '../services/project.service';
 import { formatAmountWithCurrency, parseFormattedAmount } from '../lib/money-utils';
@@ -15,6 +16,8 @@ export function ProjectsPage({ userRole }: ProjectsPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [paginationMeta, setPaginationMeta] = useState({
     current_page: 1,
     per_page: 15,
@@ -62,6 +65,9 @@ export function ProjectsPage({ userRole }: ProjectsPageProps) {
   
   const formatBudget = (project: Project): string => {
     if (project.budget_min && project.budget_max) {
+      if (project.budget_min === project.budget_max) {
+        return `${formatAmountWithCurrency(project.budget_min)}`;
+      }
       return `${formatAmountWithCurrency(project.budget_min)} - ${formatAmountWithCurrency(project.budget_max)}`;
     }
     if (project.budget_min) {
@@ -80,6 +86,55 @@ export function ProjectsPage({ userRole }: ProjectsPageProps) {
       day: 'numeric',
     });
   };
+
+  const getLocationFull = (project: Project): string => {
+    if (project.location_address && project.location_state && project.location_country) {
+      return `${project.location_address}, ${project.location_state}, ${project.location_country}`;
+    }
+    return project.location || 'N/A';
+  };
+
+  const getLocationDisplay = (project: Project): string => {
+    if (project.location_state && project.location_country) {
+      return `${project.location_state}, ${project.location_country}`;
+    }
+    return project.location || 'N/A';
+  };
+
+  const getProjectBadgeStatus = (status: Project['status']) => {
+    switch (status) {
+      case 'draft':
+        return 'pending';
+      case 'active':
+        return 'active';
+      case 'completed':
+        return 'completed';
+      case 'disputed':
+        return 'disputed';
+      case 'cancelled':
+        return 'rejected';
+      default:
+        return 'pending';
+    }
+  };
+
+  const filteredProjects = useMemo(() => {
+    const normalizedQuery = filterQuery.trim().toLowerCase();
+    return projects.filter((project) => {
+      const locationSearch = project.location_address && project.location_state && project.location_country
+        ? `${project.location_address} ${project.location_state} ${project.location_country}`
+        : (project.location || '');
+      const nameMatches = normalizedQuery
+        ? `${project.title} ${project.company?.company_name || ''} ${locationSearch}`
+            .toLowerCase()
+            .includes(normalizedQuery)
+        : true;
+      const statusMatches = filterStatus === 'all'
+        ? true
+        : project.status === filterStatus;
+      return nameMatches && statusMatches;
+    });
+  }, [projects, filterQuery, filterStatus]);
   
   // Calculate stats
   const activeProjects = projects.filter(
@@ -137,7 +192,11 @@ export function ProjectsPage({ userRole }: ProjectsPageProps) {
     },
     {
       header: 'Location',
-      accessor: (row: Project) => row.location,
+      accessor: (row: Project) => (
+        <span title={getLocationFull(row)} className="text-sm text-[#334155]">
+          {getLocationDisplay(row)}
+        </span>
+      ),
     },
     {
       header: 'Budget',
@@ -164,7 +223,20 @@ export function ProjectsPage({ userRole }: ProjectsPageProps) {
     },
     {
       header: 'Status',
-      accessor: (row: Project) => <StatusBadge status={row.status} />,
+      accessor: (row: Project) => <StatusBadge status={getProjectBadgeStatus(row.status)} />,
+    },
+    {
+      header: 'Action',
+      accessor: (row: Project) => (
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => navigate(`/projects/${row.id}`)}
+          className="whitespace-nowrap"
+        >
+          View Project
+        </Button>
+      ),
     },
   ];
   
@@ -218,15 +290,21 @@ export function ProjectsPage({ userRole }: ProjectsPageProps) {
           </div>
         </div>
         
-        {/* Total Investment Card - White with Blue */}
+        {/* Total Investment / Client Payments Card - White with Blue */}
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-[#1E3A8A] mb-2">Total Investment</p>
+              <p className="text-sm font-medium text-[#1E3A8A] mb-2">
+                {userRole === 'company' ? 'Client Payments Total' : 'Total Investment'}
+              </p>
               <p className="text-4xl font-bold text-[#1E3A8A] mb-3">
                 {formatInvestment(totalInvestment)}
               </p>
-              <p className="text-xs text-[#64748B]">Across all projects</p>
+              <p className="text-xs text-[#64748B]">
+                {userRole === 'company'
+                  ? 'Total paid by clients across all projects'
+                  : 'Across all projects'}
+              </p>
             </div>
             <div className="w-16 h-16 rounded-full bg-[#1E3A8A]/10 flex items-center justify-center">
               <DollarSign className="w-8 h-8 text-[#1E3A8A]" />
@@ -251,18 +329,41 @@ export function ProjectsPage({ userRole }: ProjectsPageProps) {
       
       {/* Projects Table */}
       <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
-        <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
-          <div className="flex items-center gap-2">
-            <FolderKanban className="w-5 h-5 text-[#1E3A8A]" />
-            <h3 className="text-lg font-semibold text-[#334155]">All Projects</h3>
+        <div className="border-b border-[#E5E7EB] px-6 py-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2">
+              <FolderKanban className="w-5 h-5 text-[#1E3A8A]" />
+              <h3 className="text-lg font-semibold text-[#334155]">All Projects</h3>
+            </div>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+              <input
+                type="text"
+                value={filterQuery}
+                onChange={(e) => setFilterQuery(e.target.value)}
+                placeholder="Search projects..."
+                className="w-full md:w-60 px-3 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none text-sm"
+              />
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full md:w-44 px-3 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none text-sm bg-white"
+              >
+                <option value="all">All Status</option>
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
           </div>
         </div>
         <div className="p-0">
           <Table
             columns={columns}
-            data={projects}
-            onRowClick={(row) => navigate(`/projects/${row.id}`)}
-            emptyMessage="No projects yet. Book a consultation to get started."
+            data={filteredProjects}
+            emptyMessage={filteredProjects.length === 0 && (filterQuery || filterStatus !== 'all')
+              ? 'No projects match your filters.'
+              : 'No projects yet. Book a consultation to get started.'}
           />
           
           {paginationMeta.last_page > 1 && (

@@ -6,15 +6,15 @@ import apiClient, { extractData, extractMeta, ApiResponse } from '../lib/api-cli
 export interface Transaction {
   id: string;
   type: 'escrow_deposit' | 'escrow_release' | 'escrow_refund' | 'consultation_payment' | 'platform_fee';
-  amount: number;
+  amount: string | number; // Backend sends formatted strings (e.g., "10K", "228", "1.5M")
   status: 'success' | 'pending' | 'failed';
   payment_reference?: string;
   description: string;
   entity_type: string;
   entity_id: string;
-  total_amount?: number;
-  platform_fee?: number;
-  net_amount?: number;
+  total_amount?: string | number;
+  platform_fee?: string | number;
+  net_amount?: string | number;
   milestone?: {
     id: string;
     title: string;

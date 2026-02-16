@@ -8,7 +8,7 @@ import { Select } from '../components/Select';
 import { Modal } from '../components/Modal';
 import { StatusBadge } from '../components/StatusBadge';
 import { companyService, Company } from '../services/company.service';
-import { consultationService, Consultation } from '../services/consultation.service';
+import { consultationService, Consultation, PaginationMeta } from '../services/consultation.service';
 
 interface ConsultationsPageProps {
   userRole?: 'client' | 'company' | 'admin' | null;
@@ -22,9 +22,15 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [consultationsMeta, setConsultationsMeta] = useState<PaginationMeta | null>(null);
+  const [consultationsPage, setConsultationsPage] = useState(1);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
   const [isLoadingConsultations, setIsLoadingConsultations] = useState(true);
   const [isBooking, setIsBooking] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState('all');
+  const [filterDate, setFilterDate] = useState('');
   
   // Booking form state
   const [bookingForm, setBookingForm] = useState({
@@ -44,8 +50,15 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
     if (userRole === 'client') {
       loadCompanies();
     }
-    loadConsultations();
+    setConsultationsPage(1);
   }, [userRole]);
+
+  useEffect(() => {
+    if (!userRole) {
+      return;
+    }
+    loadConsultations(consultationsPage);
+  }, [consultationsPage, userRole]);
   
   const loadCompanies = async () => {
     try {
@@ -65,7 +78,9 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
     }
   };
   
-  const loadConsultations = async () => {
+  const consultationsPerPage = 10;
+
+  const loadConsultations = async (page = consultationsPage) => {
     if (!userRole) {
       return;
     }
@@ -74,20 +89,30 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
       setIsLoadingConsultations(true);
       // Use role-specific endpoints
       if (userRole === 'company') {
-        const { consultations: fetchedConsultations } = await consultationService.listForCompany();
+        const { consultations: fetchedConsultations, meta } = await consultationService.listForCompany({
+          per_page: consultationsPerPage,
+          page,
+        });
         setConsultations(fetchedConsultations);
+        setConsultationsMeta(meta);
       } else if (userRole === 'client') {
-        const { consultations: fetchedConsultations } = await consultationService.list();
+        const { consultations: fetchedConsultations, meta } = await consultationService.list({
+          per_page: consultationsPerPage,
+          page,
+        });
         setConsultations(fetchedConsultations);
+        setConsultationsMeta(meta);
       } else {
         // For other roles, set empty array
         setConsultations([]);
+        setConsultationsMeta(null);
       }
     } catch (error: any) {
       console.error('Failed to load consultations:', error);
       // Don't show toast here - API interceptor already handles it
       // Just set empty array to prevent crashes
       setConsultations([]);
+      setConsultationsMeta(null);
     } finally {
       setIsLoadingConsultations(false);
     }
@@ -162,6 +187,10 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
       minute: '2-digit',
     });
   };
+
+  const formatDateValue = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-CA');
+  };
   
   const getStatusBadgeStatus = (status: string): 'pending' | 'approved' | 'rejected' | 'scheduled' | 'completed' | 'active' => {
     switch (status?.toLowerCase()) {
@@ -196,6 +225,191 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
       default:
         return 'pending';
     }
+  };
+
+  const filteredConsultations = consultations.filter((consultation) => {
+    const displayName = userRole === 'company'
+      ? (consultation.client?.name || 'Client')
+      : (consultation.company?.company_name || 'Company');
+    const matchesQuery = filterQuery
+      ? displayName.toLowerCase().includes(filterQuery.trim().toLowerCase())
+      : true;
+    const matchesStatus = filterStatus === 'all'
+      ? true
+      : consultation.status?.toLowerCase() === filterStatus;
+    const matchesPayment = filterPaymentStatus === 'all'
+      ? true
+      : consultation.payment_status?.toLowerCase() === filterPaymentStatus;
+    const matchesDate = filterDate
+      ? formatDateValue(consultation.scheduled_at) === filterDate
+      : true;
+
+    return matchesQuery && matchesStatus && matchesPayment && matchesDate;
+  });
+
+  const renderConsultationFilters = () => (
+    <div className="bg-white rounded-t-xl border border-[#E5E7EB] shadow-lg p-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label className="block text-xs font-medium text-[#64748B] mb-1">Search Name</label>
+          <input
+            type="text"
+            value={filterQuery}
+            onChange={(e) => setFilterQuery(e.target.value)}
+            placeholder="Search by name"
+            className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[#64748B] mb-1">Status</label>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none text-sm bg-white"
+          >
+            <option value="all">All</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[#64748B] mb-1">Payment</label>
+          <select
+            value={filterPaymentStatus}
+            onChange={(e) => setFilterPaymentStatus(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none text-sm bg-white"
+          >
+            <option value="all">All</option>
+            <option value="paid">Paid</option>
+            <option value="pending">Pending</option>
+            <option value="refunded">Refunded</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[#64748B] mb-1">Date</label>
+          <input
+            type="date"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none text-sm"
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderConsultationsTable = () => (
+    <div className="bg-white rounded-b-xl border border-t-0 border-[#E5E7EB] shadow-lg overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-[#F8FAFC] text-[#64748B]">
+            <tr>
+              <th className="px-4 py-3 text-left font-medium">Name</th>
+              <th className="px-4 py-3 text-left font-medium">Status</th>
+              <th className="px-4 py-3 text-left font-medium">Payment</th>
+              <th className="px-4 py-3 text-left font-medium">Date</th>
+              <th className="px-4 py-3 text-left font-medium">Time & Duration</th>
+              <th className="px-4 py-3 text-left font-medium">Amount</th>
+              <th className="px-4 py-3 text-left font-medium">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#E5E7EB]">
+            {filteredConsultations.map((consultation) => (
+              <tr key={consultation.id} className="hover:bg-[#F8FAFC]">
+                <td className="px-4 py-3">
+                  <div className="font-medium text-[#334155]">
+                    {userRole === 'company'
+                      ? (consultation.client?.name || 'Client')
+                      : (consultation.company?.company_name || 'Company')}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={getStatusBadgeStatus(consultation.status)} />
+                </td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={getPaymentStatusBadgeStatus(consultation.payment_status)} />
+                </td>
+                <td className="px-4 py-3 text-[#334155] whitespace-nowrap">
+                  {formatDate(consultation.scheduled_at)}
+                </td>
+                <td className="px-4 py-3 text-[#334155] whitespace-nowrap">
+                  {formatTime(consultation.scheduled_at)} ({consultation.duration_minutes} min)
+                </td>
+                <td className="px-4 py-3 text-[#334155] whitespace-nowrap">
+                  ₦{consultation.price.toLocaleString()}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => navigate(`/consultations/${consultation.id}`)}
+                      className="whitespace-nowrap"
+                    >
+                      View Details
+                    </Button>
+                    {userRole === 'client' && !consultation.is_paid && consultation.payment_status !== 'paid' && (
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const payment = await consultationService.pay(consultation.id);
+                            window.location.href = payment.payment_url;
+                          } catch (error) {
+                            console.error('Payment error:', error);
+                          }
+                        }}
+                        className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all whitespace-nowrap"
+                      >
+                        Pay Now
+                      </Button>
+                    )}
+                    {userRole === 'client' && (consultation.is_paid || consultation.payment_status === 'paid') && (
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#D1FAE5] text-[#065F46] border border-[#A7F3D0]">
+                        <span className="text-xs font-medium">✓ Paid</span>
+                      </div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderConsultationsPagination = () => {
+    if (!consultationsMeta || consultationsMeta.last_page <= 1) {
+      return null;
+    }
+
+    return (
+      <div className="bg-white rounded-b-xl border border-t-0 border-[#E5E7EB] shadow-lg px-4 py-3 flex items-center justify-between">
+        <p className="text-xs text-[#64748B]">
+          Page {consultationsMeta.current_page} of {consultationsMeta.last_page}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setConsultationsPage((prev) => Math.max(1, prev - 1))}
+            disabled={consultationsMeta.current_page <= 1}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setConsultationsPage((prev) => Math.min(consultationsMeta.last_page, prev + 1))}
+            disabled={consultationsMeta.current_page >= consultationsMeta.last_page}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    );
   };
   
   // Show loading state while userRole is not available
@@ -436,92 +650,23 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
             </div>
           </div>
         ) : consultations.length > 0 ? (
-          <div className="grid gap-4">
-            {consultations.map((consultation) => (
-              <div key={consultation.id} className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6 hover:shadow-xl transition-shadow">
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-start gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] flex items-center justify-center flex-shrink-0">
-                        <Calendar className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3 flex-wrap">
-                          <h3 className="text-lg font-semibold text-[#334155]">
-                            {userRole === 'company' 
-                              ? (consultation.client?.name || 'Client')
-                              : (consultation.company?.company_name || 'Company')}
-                          </h3>
-                          <StatusBadge status={getStatusBadgeStatus(consultation.status)} />
-                          <StatusBadge 
-                            status={getPaymentStatusBadgeStatus(consultation.payment_status)} 
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
-                              <Calendar className="w-4 h-4 text-[#1E3A8A]" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-[#64748B]">Date</p>
-                              <p className="text-sm font-medium text-[#334155]">{formatDate(consultation.scheduled_at)}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
-                              <Clock className="w-4 h-4 text-[#1E3A8A]" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-[#64748B]">Time & Duration</p>
-                              <p className="text-sm font-medium text-[#334155]">{formatTime(consultation.scheduled_at)} ({consultation.duration_minutes} min)</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
-                              <DollarSign className="w-4 h-4 text-[#1E3A8A]" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-[#64748B]">Amount</p>
-                              <p className="text-sm font-medium text-[#334155]">₦{consultation.price.toLocaleString()}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate(`/consultations/${consultation.id}`)}
-                      className="whitespace-nowrap"
-                    >
-                      View Details
-                    </Button>
-                    {userRole === 'client' && !consultation.is_paid && consultation.payment_status !== 'paid' && (
-                      <Button
-                        onClick={async () => {
-                          try {
-                            const payment = await consultationService.pay(consultation.id);
-                            window.location.href = payment.payment_url;
-                          } catch (error) {
-                            console.error('Payment error:', error);
-                          }
-                        }}
-                        className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all whitespace-nowrap"
-                      >
-                        Pay Now
-                      </Button>
-                    )}
-                    {userRole === 'client' && (consultation.is_paid || consultation.payment_status === 'paid') && (
-                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#D1FAE5] text-[#065F46] border border-[#A7F3D0]">
-                        <span className="text-sm font-medium">✓ Paid</span>
-                      </div>
-                    )}
+          <>
+            <div>
+              {renderConsultationFilters()}
+              {filteredConsultations.length > 0 ? (
+                <>
+                  {renderConsultationsTable()}
+                  {renderConsultationsPagination()}
+                </>
+              ) : (
+                <div className="bg-white rounded-b-xl border border-t-0 border-[#E5E7EB] shadow-lg p-8">
+                  <div className="text-center py-8">
+                    <p className="text-sm text-[#64748B]">No consultations match your filters</p>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          </>
         ) : (
           <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-8">
             <div className="text-center py-12">
@@ -562,92 +707,23 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
               </div>
             </div>
           ) : consultations.length > 0 ? (
-            <div className="grid gap-4">
-              {consultations.map((consultation) => (
-                <div key={consultation.id} className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6 hover:shadow-xl transition-shadow">
-                  <div className="flex flex-col md:flex-row gap-6">
-                    <div className="flex-1">
-                      <div className="flex items-start gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] flex items-center justify-center flex-shrink-0">
-                          <Calendar className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3 flex-wrap">
-                            <h3 className="text-lg font-semibold text-[#334155]">
-                              {userRole === 'company' 
-                                ? (consultation.client?.name || 'Client')
-                                : (consultation.company?.company_name || 'Company')}
-                            </h3>
-                            <StatusBadge status={getStatusBadgeStatus(consultation.status)} />
-                            <StatusBadge 
-                              status={getPaymentStatusBadgeStatus(consultation.payment_status)} 
-                            />
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
-                                <Calendar className="w-4 h-4 text-[#1E3A8A]" />
-                              </div>
-                              <div>
-                                <p className="text-xs text-[#64748B]">Date</p>
-                                <p className="text-sm font-medium text-[#334155]">{formatDate(consultation.scheduled_at)}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
-                                <Clock className="w-4 h-4 text-[#1E3A8A]" />
-                              </div>
-                              <div>
-                                <p className="text-xs text-[#64748B]">Time & Duration</p>
-                                <p className="text-sm font-medium text-[#334155]">{formatTime(consultation.scheduled_at)} ({consultation.duration_minutes} min)</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
-                                <DollarSign className="w-4 h-4 text-[#1E3A8A]" />
-                              </div>
-                              <div>
-                                <p className="text-xs text-[#64748B]">Amount</p>
-                                <p className="text-sm font-medium text-[#334155]">₦{consultation.price.toLocaleString()}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-end">
-                      <Button
-                        variant="outline"
-                        onClick={() => navigate(`/consultations/${consultation.id}`)}
-                        className="whitespace-nowrap"
-                      >
-                        View Details
-                      </Button>
-                      {userRole === 'client' && !consultation.is_paid && consultation.payment_status !== 'paid' && (
-                        <Button
-                          onClick={async () => {
-                            try {
-                              const payment = await consultationService.pay(consultation.id);
-                              window.location.href = payment.payment_url;
-                            } catch (error) {
-                              console.error('Payment error:', error);
-                            }
-                          }}
-                          className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all whitespace-nowrap"
-                        >
-                          Pay Now
-                        </Button>
-                      )}
-                      {userRole === 'client' && (consultation.is_paid || consultation.payment_status === 'paid') && (
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#D1FAE5] text-[#065F46] border border-[#A7F3D0]">
-                          <span className="text-sm font-medium">✓ Paid</span>
-                        </div>
-                      )}
+            <>
+              <div>
+                {renderConsultationFilters()}
+                {filteredConsultations.length > 0 ? (
+                  <>
+                    {renderConsultationsTable()}
+                    {renderConsultationsPagination()}
+                  </>
+                ) : (
+                  <div className="bg-white rounded-b-xl border border-t-0 border-[#E5E7EB] shadow-lg p-8">
+                    <div className="text-center py-8">
+                      <p className="text-sm text-[#64748B]">No consultations match your filters</p>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            </>
           ) : (
             <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-8">
               <div className="text-center py-12">

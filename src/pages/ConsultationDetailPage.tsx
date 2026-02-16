@@ -5,8 +5,6 @@ import { Calendar, Clock, Video, FileText, ArrowLeft, DollarSign, CheckCircle, B
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
-import { Input } from '../components/Input';
-import { Textarea } from '../components/Textarea';
 import { consultationService, Consultation } from '../services/consultation.service';
 import { projectService } from '../services/project.service';
 import { formatAmountWithCurrency, parseFormattedAmount } from '../lib/money-utils';
@@ -23,9 +21,10 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
   const [projectForm, setProjectForm] = useState({
     title: '',
     description: '',
-    location: '',
-    budget_min: '',
-    budget_max: '',
+    country: '',
+    state: '',
+    address: '',
+    budget: '',
   });
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const navigate = useNavigate();
@@ -116,6 +115,180 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
         return 'pending';
     }
   };
+
+  const countryOptions = [
+    { value: 'Nigeria', label: 'Nigeria' },
+    { value: 'Ghana', label: 'Ghana' },
+  ];
+
+  const statesByCountry: Record<string, string[]> = {
+    Nigeria: [
+      'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+      'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'Gombe', 'Imo', 'Jigawa',
+      'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa',
+      'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
+      'Taraba', 'Yobe', 'Zamfara', 'FCT',
+    ],
+    Ghana: [
+      'Ahafo', 'Ashanti', 'Bono', 'Bono East', 'Central', 'Eastern', 'Greater Accra',
+      'North East', 'Northern', 'Oti', 'Savannah', 'Upper East', 'Upper West', 'Volta',
+      'Western', 'Western North',
+    ],
+  };
+
+  const stateOptions = (statesByCountry[projectForm.country] || []).map((state) => ({
+    value: state,
+    label: state,
+  }));
+
+  const createProjectModalContent = (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-[#334155] mb-1">
+          Project Title *
+        </label>
+        <input
+          value={projectForm.title}
+          onChange={(e) => setProjectForm({ ...projectForm, title: e.target.value })}
+          placeholder="e.g., 3-Bedroom House Construction"
+          className="w-full px-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none transition-colors text-sm text-[#334155] placeholder:text-[#64748B]"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-[#334155] mb-1">
+          Description
+        </label>
+        <textarea
+          value={projectForm.description}
+          onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
+          placeholder="Describe your project requirements..."
+          rows={4}
+          className="w-full px-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none transition-colors text-sm text-[#334155] placeholder:text-[#64748B] resize-vertical"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-[#334155] mb-1">
+            Country *
+          </label>
+          <select
+            value={projectForm.country}
+            onChange={(e) => {
+              const country = e.target.value;
+              setProjectForm((prev) => ({
+                ...prev,
+                country,
+                state: '',
+              }));
+            }}
+            className="w-full px-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none transition-colors text-sm text-[#334155] bg-white"
+          >
+            <option value="" disabled>
+              Select country
+            </option>
+            {countryOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-[#334155] mb-1">
+            State *
+          </label>
+          <select
+            value={projectForm.state}
+            onChange={(e) => setProjectForm({ ...projectForm, state: e.target.value })}
+            disabled={!projectForm.country}
+            className="w-full px-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none transition-colors text-sm text-[#334155] bg-white disabled:opacity-50"
+          >
+            <option value="" disabled>
+              {projectForm.country ? 'Select state' : 'Select country first'}
+            </option>
+            {stateOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-[#334155] mb-1">
+          Address *
+        </label>
+        <input
+          value={projectForm.address}
+          onChange={(e) => setProjectForm({ ...projectForm, address: e.target.value })}
+          placeholder="Street address"
+          className="w-full px-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none transition-colors text-sm text-[#334155] placeholder:text-[#64748B]"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-[#334155] mb-1">
+          Budget (₦)
+        </label>
+        <input
+          type="number"
+          value={projectForm.budget}
+          onChange={(e) => setProjectForm({ ...projectForm, budget: e.target.value })}
+          placeholder="0"
+          className="w-full px-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none transition-colors text-sm text-[#334155] placeholder:text-[#64748B]"
+        />
+      </div>
+
+      <div className="flex gap-3 pt-4">
+        <Button
+          variant="secondary"
+          onClick={() => setShowCreateProjectModal(false)}
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={async () => {
+            if (!projectForm.title || !projectForm.country || !projectForm.state || !projectForm.address) {
+              toast.error('Please fill in all required fields');
+              return;
+            }
+
+            try {
+              setIsCreatingProject(true);
+              const project = await projectService.create({
+                consultation_id: consultation!.id,
+                title: projectForm.title,
+                description: projectForm.description || undefined,
+                location: `${projectForm.address}, ${projectForm.state}, ${projectForm.country}`,
+                    location_country: projectForm.country,
+                    location_state: projectForm.state,
+                    location_address: projectForm.address,
+                budget_min: projectForm.budget ? parseFloat(projectForm.budget) : undefined,
+                budget_max: projectForm.budget ? parseFloat(projectForm.budget) : undefined,
+              });
+              
+              toast.success('Project created successfully!');
+              setShowCreateProjectModal(false);
+              navigate(`/projects/${project.id}`);
+            } catch (error: any) {
+              console.error('Failed to create project:', error);
+              toast.error(error.response?.data?.message || 'Failed to create project');
+            } finally {
+              setIsCreatingProject(false);
+            }
+          }}
+          disabled={isCreatingProject}
+          className="flex-1"
+        >
+          {isCreatingProject ? 'Creating...' : 'Create Project'}
+        </Button>
+      </div>
+    </div>
+  );
   
   const handlePay = async () => {
     if (!consultation) return;
@@ -187,7 +360,9 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
             </div>
             <div>
               <h1 className="text-2xl font-semibold text-[#334155] mb-1">
-                Consultation with {consultation.company?.company_name || 'Company'}
+                Consultation with {userRole === 'company'
+                  ? (consultation.client?.name || 'Client')
+                  : (consultation.company?.company_name || 'Company')}
               </h1>
               <p className="text-sm text-[#64748B]">
                 Consultation ID: {consultation.id.slice(0, 8)}...
@@ -431,60 +606,87 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
         
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Company Info */}
+          {/* Company/Client Info */}
           <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
             <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
               <div className="flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-[#1E3A8A]" />
-                <h3 className="text-lg font-semibold text-[#334155]">Company Contact</h3>
+                <h3 className="text-lg font-semibold text-[#334155]">
+                  {userRole === 'company' ? 'Client Contact' : 'Company Contact'}
+                </h3>
               </div>
             </div>
             <div className="p-6">
               <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-[#64748B] mb-1">Company Name</p>
-                  <p className="text-sm text-[#334155] font-semibold">
-                    {consultation.company?.company_name || 'N/A'}
-                  </p>
-                </div>
-                
-                {consultation.company?.user && (
+                {userRole === 'company' ? (
                   <>
                     <div>
-                      <p className="text-xs text-[#64748B] mb-1">Contact Person</p>
-                      <p className="text-sm text-[#334155] font-medium">{consultation.company.user.name}</p>
+                      <p className="text-xs text-[#64748B] mb-1">Client Name</p>
+                      <p className="text-sm text-[#334155] font-semibold">
+                        {consultation.client?.name || 'N/A'}
+                      </p>
                     </div>
                     
-                    <div>
-                      <p className="text-xs text-[#64748B] mb-1">Email</p>
-                      <a
-                        href={`mailto:${consultation.company.user.email}`}
-                        className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] font-medium"
-                      >
-                        {consultation.company.user.email}
-                      </a>
-                    </div>
+                    {consultation.client?.email && (
+                      <div>
+                        <p className="text-xs text-[#64748B] mb-1">Email</p>
+                        <a
+                          href={`mailto:${consultation.client.email}`}
+                          className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] font-medium"
+                        >
+                          {consultation.client.email}
+                        </a>
+                      </div>
+                    )}
                   </>
-                )}
-                
-                {consultation.company?.registration_number && (
-                  <div>
-                    <p className="text-xs text-[#64748B] mb-1">Registration Number</p>
-                    <p className="text-sm text-[#334155] font-medium">{consultation.company.registration_number}</p>
-                  </div>
-                )}
-                
-                {consultation.company?.specialization && consultation.company.specialization.length > 0 && (
-                  <div>
-                    <p className="text-xs text-[#64748B] mb-1">Specialization</p>
-                    <div className="flex flex-wrap gap-2">
-                      {consultation.company.specialization.map((spec, idx) => (
-                        <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-[#F8FAFC] text-[#64748B] border border-[#E5E7EB]">
-                          {spec}
-                        </span>
-                      ))}
+                ) : (
+                  <>
+                    <div>
+                      <p className="text-xs text-[#64748B] mb-1">Company Name</p>
+                      <p className="text-sm text-[#334155] font-semibold">
+                        {consultation.company?.company_name || 'N/A'}
+                      </p>
                     </div>
-                  </div>
+                    
+                    {consultation.company?.user && (
+                      <>
+                        <div>
+                          <p className="text-xs text-[#64748B] mb-1">Contact Person</p>
+                          <p className="text-sm text-[#334155] font-medium">{consultation.company.user.name}</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-[#64748B] mb-1">Email</p>
+                          <a
+                            href={`mailto:${consultation.company.user.email}`}
+                            className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] font-medium"
+                          >
+                            {consultation.company.user.email}
+                          </a>
+                        </div>
+                      </>
+                    )}
+                    
+                    {consultation.company?.registration_number && (
+                      <div>
+                        <p className="text-xs text-[#64748B] mb-1">Registration Number</p>
+                        <p className="text-sm text-[#334155] font-medium">{consultation.company.registration_number}</p>
+                      </div>
+                    )}
+                    
+                    {consultation.company?.specialization && consultation.company.specialization.length > 0 && (
+                      <div>
+                        <p className="text-xs text-[#64748B] mb-1">Specialization</p>
+                        <div className="flex flex-wrap gap-2">
+                          {consultation.company.specialization.map((spec, idx) => (
+                            <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-[#F8FAFC] text-[#64748B] border border-[#E5E7EB]">
+                              {spec}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -571,111 +773,8 @@ export function ConsultationDetailPage({ consultationId, userRole }: Consultatio
         isOpen={showCreateProjectModal}
         onClose={() => setShowCreateProjectModal(false)}
         title="Create New Project"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[#334155] mb-1">
-              Project Title *
-            </label>
-            <Input
-              value={projectForm.title}
-              onChange={(e) => setProjectForm({ ...projectForm, title: e.target.value })}
-              placeholder="e.g., 3-Bedroom House Construction"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#334155] mb-1">
-              Description
-            </label>
-            <Textarea
-              value={projectForm.description}
-              onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
-              placeholder="Describe your project requirements..."
-              rows={4}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#334155] mb-1">
-              Location *
-            </label>
-            <Input
-              value={projectForm.location}
-              onChange={(e) => setProjectForm({ ...projectForm, location: e.target.value })}
-              placeholder="e.g., Lagos, Nigeria"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-[#334155] mb-1">
-                Budget Min (₦)
-              </label>
-              <Input
-                type="number"
-                value={projectForm.budget_min}
-                onChange={(e) => setProjectForm({ ...projectForm, budget_min: e.target.value })}
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#334155] mb-1">
-                Budget Max (₦)
-              </label>
-              <Input
-                type="number"
-                value={projectForm.budget_max}
-                onChange={(e) => setProjectForm({ ...projectForm, budget_max: e.target.value })}
-                placeholder="0"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <Button
-              variant="secondary"
-              onClick={() => setShowCreateProjectModal(false)}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!projectForm.title || !projectForm.location) {
-                  toast.error('Please fill in all required fields');
-                  return;
-                }
-
-                try {
-                  setIsCreatingProject(true);
-                  const project = await projectService.create({
-                    consultation_id: consultation!.id,
-                    title: projectForm.title,
-                    description: projectForm.description || undefined,
-                    location: projectForm.location,
-                    budget_min: projectForm.budget_min ? parseFloat(projectForm.budget_min) : undefined,
-                    budget_max: projectForm.budget_max ? parseFloat(projectForm.budget_max) : undefined,
-                  });
-                  
-                  toast.success('Project created successfully!');
-                  setShowCreateProjectModal(false);
-                  navigate(`/projects/${project.id}`);
-                } catch (error: any) {
-                  console.error('Failed to create project:', error);
-                  toast.error(error.response?.data?.message || 'Failed to create project');
-                } finally {
-                  setIsCreatingProject(false);
-                }
-              }}
-              disabled={isCreatingProject}
-              className="flex-1"
-            >
-              {isCreatingProject ? 'Creating...' : 'Create Project'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        children={createProjectModalContent}
+      />
     </div>
   );
 }

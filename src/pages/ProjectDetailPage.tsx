@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Building2, DollarSign, Calendar, MapPin, CheckCircle, Clock, AlertCircle, X, MessageSquare, FolderKanban, Shield } from 'lucide-react';
+import { ArrowLeft, Building2, DollarSign, Calendar, MapPin, CheckCircle, Clock, AlertCircle, X, MessageSquare, FolderKanban, Shield, Image as ImageIcon, Plus } from 'lucide-react';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Textarea } from '../components/Textarea';
+import { FilePreviewInput } from '../components/FilePreviewInput';
 import { projectService, Project } from '../services/project.service';
 import { milestoneService } from '../services/milestone.service';
 import { Milestone } from '../services/project.service';
@@ -28,12 +29,31 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   const [verificationNotes, setVerificationNotes] = useState('');
   const [milestoneNotes, setMilestoneNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previewImageFile, setPreviewImageFile] = useState<File | null>(null);
+  const [previewImagePreview, setPreviewImagePreview] = useState<string | null>(null);
+  const [drawingFiles, setDrawingFiles] = useState({
+    architectural: null as File | null,
+    structural: null as File | null,
+    mechanical: null as File | null,
+    technical: null as File | null,
+  });
+  const [extraUploads, setExtraUploads] = useState<Array<{ id: string; title: string; file: File | null }>>([]);
+  const [isUploadingDocuments, setIsUploadingDocuments] = useState(false);
   
   useEffect(() => {
     if (projectId) {
       loadProject();
     }
   }, [projectId, userRole]);
+
+  useEffect(() => {
+    if (previewImageFile) {
+      const objectUrl = URL.createObjectURL(previewImageFile);
+      setPreviewImagePreview(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+    setPreviewImagePreview(null);
+  }, [previewImageFile]);
   
   const loadProject = async () => {
     try {
@@ -49,6 +69,14 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
         fetchedProject = await projectService.get(projectId);
       }
       setProject(fetchedProject);
+      setPreviewImageFile(null);
+      setDrawingFiles({
+        architectural: null,
+        structural: null,
+        mechanical: null,
+        technical: null,
+      });
+      setExtraUploads([]);
     } catch (error) {
       console.error('Failed to load project:', error);
       toast.error('Failed to load project details');
@@ -69,6 +97,9 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   
   const formatBudget = (project: Project): string => {
     if (project.budget_min && project.budget_max) {
+      if (project.budget_min === project.budget_max) {
+        return `₦${project.budget_min.toLocaleString()}`;
+      }
       return `₦${project.budget_min.toLocaleString()} - ₦${project.budget_max.toLocaleString()}`;
     }
     if (project.budget_min) {
@@ -78,6 +109,53 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
       return `Up to ₦${project.budget_max.toLocaleString()}`;
     }
     return 'Not specified';
+  };
+
+  const getLocationFull = (project: Project): string => {
+    if (project.location_address && project.location_state && project.location_country) {
+      return `${project.location_address}, ${project.location_state}, ${project.location_country}`;
+    }
+    return project.location || 'N/A';
+  };
+
+  const handleUploadDocuments = async () => {
+    if (!project || userRole !== 'company') return;
+
+    const missingRequired = [
+      !project.drawing_architectural_url && !drawingFiles.architectural,
+      !project.drawing_structural_url && !drawingFiles.structural,
+      !project.drawing_mechanical_url && !drawingFiles.mechanical,
+      !project.drawing_technical_url && !drawingFiles.technical,
+    ].some(Boolean);
+
+    if (missingRequired) {
+      toast.error('Please upload all required drawings before saving.');
+      return;
+    }
+
+    try {
+      setIsUploadingDocuments(true);
+      const extraDocuments = extraUploads
+        .filter((item) => item.title.trim() && item.file)
+        .map((item) => ({ title: item.title.trim(), file: item.file as File }));
+
+      await projectService.uploadDocuments(project.id, {
+        preview_image: previewImageFile || undefined,
+        drawing_architectural: drawingFiles.architectural || undefined,
+        drawing_structural: drawingFiles.structural || undefined,
+        drawing_mechanical: drawingFiles.mechanical || undefined,
+        drawing_technical: drawingFiles.technical || undefined,
+        extra_documents: extraDocuments.length > 0 ? extraDocuments : undefined,
+      });
+
+      toast.success('Project documents updated successfully.');
+      await loadProject();
+    } catch (error: any) {
+      console.error('Failed to upload project documents:', error);
+      toast.error(error.response?.data?.message || 'Failed to upload documents');
+    } finally {
+      setIsUploadingDocuments(false);
+    }
   };
   
   const formatDate = (dateString: string) => {
@@ -246,6 +324,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   
   const progress = calculateProjectProgress(project);
   const milestones = project.milestones || [];
+  const previewImageUrl = previewImagePreview || project.preview_image_url || null;
   
   return (
     <div className="space-y-6 min-h-screen">
@@ -258,67 +337,75 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
         Back to Projects
       </button>
       
-      {/* Header */}
-      <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] flex items-center justify-center">
-              <FolderKanban className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-[#334155] mb-1">
-                {project.title}
-              </h1>
-              <p className="text-sm text-[#64748B]">Project ID: {project.id.slice(0, 8)}...</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <StatusBadge status={project.status} />
-            {/* Complete Project Button - Show when all milestones are released and project is not already completed */}
-            {(userRole === 'client' || userRole === 'company') && 
-             project.status !== 'completed' && 
-             milestones.length > 0 &&
-             milestones.every(m => m.status === 'released') && (
-              <Button
-                onClick={async () => {
-                  try {
-                    setIsProcessing(true);
-                    if (userRole === 'client') {
-                      await projectService.complete(project.id);
-                    } else if (userRole === 'company') {
-                      await projectService.completeForCompany(project.id);
-                    }
-                    toast.success('Project marked as completed!');
-                    loadProject();
-                  } catch (error: any) {
-                    console.error('Failed to complete project:', error);
-                    toast.error(error.response?.data?.message || 'Failed to mark project as completed');
-                  } finally {
-                    setIsProcessing(false);
-                  }
-                }}
-                disabled={isProcessing}
-                className="bg-gradient-to-r from-[#16A34A] to-[#22C55E] hover:from-[#15803D] hover:to-[#16A34A] text-white shadow-md hover:shadow-lg transition-all"
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                {isProcessing ? 'Completing...' : 'Mark as Completed'}
-              </Button>
+      {/* Header + Progress */}
+      <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr]">
+          <div className="relative h-48 lg:h-full">
+            {previewImageUrl ? (
+              <img
+                src={previewImageUrl}
+                alt="Project preview"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full bg-[#F8FAFC] flex flex-col items-center justify-center text-[#64748B] border-b border-[#E5E7EB] lg:border-b-0 lg:border-r">
+                <ImageIcon className="w-10 h-10 mb-2" />
+                <span className="text-xs font-medium">Project preview not set</span>
+              </div>
             )}
           </div>
-        </div>
-      </div>
-      
-      {/* Progress Bar */}
-      <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-[#334155]">Overall Progress</span>
-          <span className="text-lg font-bold text-[#1E3A8A]">{progress}%</span>
-        </div>
-        <div className="w-full h-3 bg-[#E5E7EB] rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-[#16A34A] to-[#22C55E] rounded-full transition-all"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="p-6 flex flex-col gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-[#94A3B8] mb-1">Project</p>
+                <h1 className="text-2xl font-semibold text-[#334155]">{project.title}</h1>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <StatusBadge status={project.status} />
+                {(userRole === 'client' || userRole === 'company') &&
+                 project.status !== 'completed' &&
+                 milestones.length > 0 &&
+                 milestones.every(m => m.status === 'released') && (
+                  <Button
+                    onClick={async () => {
+                      try {
+                        setIsProcessing(true);
+                        if (userRole === 'client') {
+                          await projectService.complete(project.id);
+                        } else if (userRole === 'company') {
+                          await projectService.completeForCompany(project.id);
+                        }
+                        toast.success('Project marked as completed!');
+                        loadProject();
+                      } catch (error: any) {
+                        console.error('Failed to complete project:', error);
+                        toast.error(error.response?.data?.message || 'Failed to mark project as completed');
+                      } finally {
+                        setIsProcessing(false);
+                      }
+                    }}
+                    disabled={isProcessing}
+                    className="bg-gradient-to-r from-[#16A34A] to-[#22C55E] hover:from-[#15803D] hover:to-[#16A34A] text-white shadow-md hover:shadow-lg transition-all"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    {isProcessing ? 'Completing...' : 'Mark as Completed'}
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="bg-[#F8FAFC] rounded-xl border border-[#E5E7EB] p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-[#334155]">Overall Progress</span>
+                <span className="text-lg font-bold text-[#1E3A8A]">{progress}%</span>
+              </div>
+              <div className="w-full h-3 bg-[#E5E7EB] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#16A34A] to-[#22C55E] rounded-full transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -383,7 +470,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                       </div>
                       <div>
                         <p className="text-xs text-[#64748B] mb-1">Location</p>
-                        <p className="text-sm font-medium text-[#334155]">{project.location}</p>
+                        <p className="text-sm font-medium text-[#334155]">{getLocationFull(project)}</p>
                       </div>
                     </div>
                     
@@ -392,7 +479,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                         <DollarSign className="w-5 h-5 text-[#1E3A8A]" />
                       </div>
                       <div>
-                        <p className="text-xs text-[#64748B] mb-1">Budget Range</p>
+                        <p className="text-xs text-[#64748B] mb-1">Budget</p>
                         <p className="text-sm font-medium text-[#334155]">
                           {formatBudget(project)}
                         </p>
@@ -409,42 +496,68 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
               <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
                 <div className="flex items-center gap-2">
                   <Building2 className="w-5 h-5 text-[#1E3A8A]" />
-                  <h3 className="text-lg font-semibold text-[#334155]">Company</h3>
+                  <h3 className="text-lg font-semibold text-[#334155]">
+                    {userRole === 'company' ? 'Client' : 'Company'}
+                  </h3>
                 </div>
               </div>
               <div className="p-6">
                 <div className="space-y-4">
-                  <div>
-                    <p className="text-xs text-[#64748B] mb-1">Company Name</p>
-                    <p className="text-sm text-[#334155] font-semibold">
-                      {project.company?.company_name || 'N/A'}
-                    </p>
-                  </div>
-                  
-                  {project.company?.user && (
+                  {userRole === 'company' ? (
                     <>
                       <div>
-                        <p className="text-xs text-[#64748B] mb-1">Contact Person</p>
-                        <p className="text-sm text-[#334155] font-medium">{project.company.user.name}</p>
+                        <p className="text-xs text-[#64748B] mb-1">Client Name</p>
+                        <p className="text-sm text-[#334155] font-semibold">
+                          {project.client?.name || 'N/A'}
+                        </p>
+                      </div>
+                      {project.client?.email && (
+                        <div>
+                          <p className="text-xs text-[#64748B] mb-1">Email</p>
+                          <a
+                            href={`mailto:${project.client.email}`}
+                            className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] font-medium"
+                          >
+                            {project.client.email}
+                          </a>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-xs text-[#64748B] mb-1">Company Name</p>
+                        <p className="text-sm text-[#334155] font-semibold">
+                          {project.company?.company_name || 'N/A'}
+                        </p>
                       </div>
                       
-                      <div>
-                        <p className="text-xs text-[#64748B] mb-1">Email</p>
-                        <a
-                          href={`mailto:${project.company.user.email}`}
-                          className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] font-medium"
-                        >
-                          {project.company.user.email}
-                        </a>
-                      </div>
+                      {project.company?.user && (
+                        <>
+                          <div>
+                            <p className="text-xs text-[#64748B] mb-1">Contact Person</p>
+                            <p className="text-sm text-[#334155] font-medium">{project.company.user.name}</p>
+                          </div>
+                          
+                          <div>
+                            <p className="text-xs text-[#64748B] mb-1">Email</p>
+                            <a
+                              href={`mailto:${project.company.user.email}`}
+                              className="text-sm text-[#1E3A8A] hover:text-[#1D4ED8] font-medium"
+                            >
+                              {project.company.user.email}
+                            </a>
+                          </div>
+                        </>
+                      )}
+                      
+                      {userRole === 'admin' && project.company?.registration_number && (
+                        <div>
+                          <p className="text-xs text-[#64748B] mb-1">Registration Number</p>
+                          <p className="text-sm text-[#334155] font-medium">{project.company.registration_number}</p>
+                        </div>
+                      )}
                     </>
-                  )}
-                  
-                  {project.company?.registration_number && (
-                    <div>
-                      <p className="text-xs text-[#64748B] mb-1">Registration Number</p>
-                      <p className="text-sm text-[#334155] font-medium">{project.company.registration_number}</p>
-                    </div>
                   )}
                 </div>
               </div>
@@ -773,6 +886,165 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
           </div>
         </div>
       )}
+
+      {/* Project Files */}
+      <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
+        <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
+          <div className="flex items-center gap-2">
+            <FolderKanban className="w-5 h-5 text-[#1E3A8A]" />
+            <h3 className="text-lg font-semibold text-[#334155]">Project Files</h3>
+          </div>
+          <p className="text-xs text-[#64748B] mt-2">
+            {userRole === 'company'
+              ? 'Upload required drawings and supporting documents for this project.'
+              : 'Review project drawings and documents shared by the company.'}
+          </p>
+        </div>
+        <div className="p-6 space-y-8">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-semibold text-[#334155]">Project Preview Image</p>
+                <p className="text-xs text-[#64748B]">Upload the final look of the project.</p>
+              </div>
+            </div>
+            <FilePreviewInput
+              label="Project Preview"
+              value={previewImageFile || project.preview_image_url || null}
+              onChange={setPreviewImageFile}
+              accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+              disabled={userRole !== 'company'}
+            />
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-[#334155] mb-3">Required Drawings</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FilePreviewInput
+                label="Architectural Drawing"
+                value={drawingFiles.architectural || project.drawing_architectural_url || null}
+                onChange={(file) => setDrawingFiles((prev) => ({ ...prev, architectural: file }))}
+                disabled={userRole !== 'company'}
+              />
+              <FilePreviewInput
+                label="Structural Drawing"
+                value={drawingFiles.structural || project.drawing_structural_url || null}
+                onChange={(file) => setDrawingFiles((prev) => ({ ...prev, structural: file }))}
+                disabled={userRole !== 'company'}
+              />
+              <FilePreviewInput
+                label="Mechanical Drawing"
+                value={drawingFiles.mechanical || project.drawing_mechanical_url || null}
+                onChange={(file) => setDrawingFiles((prev) => ({ ...prev, mechanical: file }))}
+                disabled={userRole !== 'company'}
+              />
+              <FilePreviewInput
+                label="Technical Drawing"
+                value={drawingFiles.technical || project.drawing_technical_url || null}
+                onChange={(file) => setDrawingFiles((prev) => ({ ...prev, technical: file }))}
+                disabled={userRole !== 'company'}
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-semibold text-[#334155]">Other Documents (Optional)</p>
+                <p className="text-xs text-[#64748B]">Add any additional files related to the project.</p>
+              </div>
+              {userRole === 'company' && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    setExtraUploads((prev) => [
+                      ...prev,
+                      { id: `extra-${Date.now()}-${prev.length}`, title: '', file: null },
+                    ])
+                  }
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add File
+                </Button>
+              )}
+            </div>
+
+            {project.documents && project.documents.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {project.documents.map((doc) => (
+                  <FilePreviewInput
+                    key={doc.id}
+                    label={doc.title}
+                    value={doc.file_url}
+                    onChange={() => {}}
+                    disabled
+                  />
+                ))}
+              </div>
+            )}
+
+            {extraUploads.length > 0 && (
+              <div className="space-y-4">
+                {extraUploads.map((item, index) => (
+                  <div key={item.id} className="bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <input
+                        value={item.title}
+                        onChange={(e) =>
+                          setExtraUploads((prev) =>
+                            prev.map((entry, idx) =>
+                              idx === index ? { ...entry, title: e.target.value } : entry
+                            )
+                          )
+                        }
+                        placeholder="Document title"
+                        className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none text-sm"
+                        disabled={userRole !== 'company'}
+                      />
+                      {userRole === 'company' && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExtraUploads((prev) => prev.filter((entry) => entry.id !== item.id))
+                          }
+                          className="text-[#DC2626] hover:text-[#B91C1C] text-sm"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <FilePreviewInput
+                      label="Upload File"
+                      value={item.file}
+                      onChange={(file) =>
+                        setExtraUploads((prev) =>
+                          prev.map((entry, idx) =>
+                            idx === index ? { ...entry, file } : entry
+                          )
+                        )
+                      }
+                      disabled={userRole !== 'company'}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {userRole === 'company' && (
+            <div className="flex justify-end">
+              <Button
+                onClick={handleUploadDocuments}
+                disabled={isUploadingDocuments}
+                className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
+              >
+                {isUploadingDocuments ? 'Saving...' : 'Save Documents'}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Verify Milestone Modal */}
       <Modal

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { Table, Pagination } from '../components/Table';
 import { StatusBadge } from '../components/StatusBadge';
 import { transactionService, Transaction } from '../services/transaction.service';
-import { Receipt, DollarSign, ArrowDownCircle, ArrowUpCircle, CreditCard, XCircle, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Receipt, DollarSign, ArrowDownCircle, ArrowUpCircle, CreditCard, XCircle, TrendingUp, CheckCircle2, Copy, Check } from 'lucide-react';
 import { formatAmountWithCurrency, parseFormattedAmount } from '../lib/money-utils';
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface TransactionsPageProps {
   onNavigate: (path: string) => void;
@@ -19,6 +20,7 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
   const [total, setTotal] = useState(0);
   const [typeFilter, setTypeFilter] = useState<'all' | 'escrow' | 'consultation'>('all');
   const [perPage] = useState(20);
+  const [copiedRef, setCopiedRef] = useState<string | null>(null);
 
   useEffect(() => {
     loadTransactions();
@@ -138,8 +140,8 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
       return 0;
     }
     return transactions.reduce((sum, t) => {
-      // Ensure amount is a valid number
-      const amount = typeof t.amount === 'number' ? t.amount : parseFloat(String(t.amount || 0));
+      // Parse formatted amount (handles K, M, B notation from backend)
+      const amount = parseFormattedAmount(t.amount);
       const validAmount = isNaN(amount) || !isFinite(amount) ? 0 : amount;
       
       if (userRole === 'client') {
@@ -215,9 +217,12 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
           isOutgoing = transaction.type === 'escrow_deposit' || transaction.type === 'consultation_payment';
         }
         
-        // Show breakdown if available
-        const showBreakdown = (transaction.platform_fee && transaction.platform_fee > 0) || 
-                             (transaction.total_amount && transaction.total_amount !== transaction.amount);
+        // Show breakdown if available (parse amounts to check values)
+        const platformFeeAmount = parseFormattedAmount(transaction.platform_fee);
+        const totalAmount = parseFormattedAmount(transaction.total_amount);
+        const transactionAmount = parseFormattedAmount(transaction.amount);
+        const showBreakdown = (platformFeeAmount > 0) || 
+                             (totalAmount && totalAmount !== transactionAmount);
         
         return (
           <div className="flex flex-col gap-1">
@@ -228,7 +233,7 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
               <div className="text-xs text-[#64748B]">
                 {transaction.type === 'platform_fee' ? (
                   <span>From: {formatAmountWithCurrency(transaction.total_amount)}</span>
-                ) : transaction.platform_fee && transaction.platform_fee > 0 ? (
+                ) : platformFeeAmount > 0 ? (
                   <span>
                     Total: {formatAmountWithCurrency(transaction.total_amount)} • 
                     Fee: {formatAmountWithCurrency(transaction.platform_fee)}
@@ -258,17 +263,45 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
     },
     {
       header: 'Reference',
-      accessor: (transaction: Transaction) => (
-        <div>
-          {transaction.payment_reference ? (
-            <span className="text-xs text-[#64748B] font-mono">
-              {transaction.payment_reference.substring(0, 20)}...
-            </span>
-          ) : (
-            <span className="text-xs text-[#64748B]">N/A</span>
-          )}
-        </div>
-      ),
+      accessor: (transaction: Transaction) => {
+        const handleCopy = async () => {
+          if (transaction.payment_reference) {
+            try {
+              await navigator.clipboard.writeText(transaction.payment_reference);
+              setCopiedRef(transaction.payment_reference);
+              toast.success('Reference copied to clipboard');
+              setTimeout(() => setCopiedRef(null), 2000);
+            } catch (error) {
+              toast.error('Failed to copy reference');
+            }
+          }
+        };
+
+        return (
+          <div className="flex items-center gap-2">
+            {transaction.payment_reference ? (
+              <>
+                <span className="text-xs text-[#64748B] font-mono">
+                  {transaction.payment_reference}
+                </span>
+                <button
+                  onClick={handleCopy}
+                  className="p-1 hover:bg-[#F1F5F9] rounded transition-colors group"
+                  title="Copy reference"
+                >
+                  {copiedRef === transaction.payment_reference ? (
+                    <Check className="w-3.5 h-3.5 text-[#16A34A]" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-[#64748B] group-hover:text-[#1E3A8A]" />
+                  )}
+                </button>
+              </>
+            ) : (
+              <span className="text-xs text-[#64748B]">N/A</span>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -291,12 +324,12 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
           </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Stats Cards and Chart */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           {/* First Card - Blue Gradient */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1E3A8A] to-[#1E40AF] shadow-lg">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1E3A8A] to-[#1E40AF] shadow-lg self-start">
             <div className="p-6 text-white">
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium mb-2 opacity-90">Total Transactions</p>
                   <p className="text-4xl font-bold mb-1">{total}</p>
@@ -313,7 +346,7 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
           </div>
 
           {/* Second Card - White with Blue */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-[#E5E7EB]">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-[#E5E7EB] self-start">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-[#1E3A8A] mb-2">Net Amount</p>
@@ -328,46 +361,144 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
             </div>
           </div>
 
-          {/* Third Card - White with Green */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-[#E5E7EB]">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-[#1E3A8A] mb-2">Successful</p>
-                <p className="text-3xl font-bold mb-1 text-[#16A34A]">
-                  {successfulCount}
-                </p>
-                <p className="text-xs text-[#64748B] mt-1">Completed transactions</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#16A34A]/10 to-[#22C55E]/10 flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-[#16A34A]" />
-              </div>
+          {/* Transaction Chart */}
+          <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-[#334155] mb-1">Transaction Trends</h3>
+              <p className="text-xs text-[#64748B]">Activity overview</p>
             </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-semibold text-[#334155]">Filter by Type:</label>
-            <select
-              value={typeFilter}
-              onChange={(e) => {
-                setTypeFilter(e.target.value as 'all' | 'escrow' | 'consultation');
-                setCurrentPage(1);
-              }}
-              className="px-4 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] bg-white"
-            >
-              <option value="all">All Transactions</option>
-              <option value="escrow">Escrow Only</option>
-              <option value="consultation">Consultations Only</option>
-            </select>
+            {useMemo(() => {
+            // Group transactions by date
+            const transactionsByDate = transactions.reduce((acc, transaction) => {
+              const date = new Date(transaction.created_at).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              });
+              
+              if (!acc[date]) {
+                acc[date] = {
+                  date,
+                  amount: 0,
+                  count: 0,
+                };
+              }
+              
+              // Parse formatted amount (handles K, M, B notation from backend)
+              const amount = parseFormattedAmount(transaction.amount);
+              
+              if (userRole === 'client') {
+                if (transaction.type === 'escrow_deposit' || transaction.type === 'consultation_payment') {
+                  acc[date].amount -= amount;
+                } else if (transaction.type === 'escrow_refund') {
+                  acc[date].amount += amount;
+                }
+              } else if (userRole === 'company') {
+                if (transaction.type === 'escrow_release' || transaction.type === 'consultation_payment') {
+                  acc[date].amount += amount;
+                } else if (transaction.type === 'escrow_refund') {
+                  acc[date].amount -= amount;
+                }
+              } else {
+                acc[date].amount += amount;
+              }
+              
+              acc[date].count += 1;
+              return acc;
+            }, {} as Record<string, { date: string; amount: number; count: number }>);
+            
+            type ChartDataPoint = { date: string; amount: number; count: number };
+            const chartDataArray: ChartDataPoint[] = Object.values(transactionsByDate);
+            const chartData = chartDataArray
+              .sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateA.getTime() - dateB.getTime();
+              })
+              .slice(-30); // Last 30 days
+            
+            if (chartData.length === 0) {
+              return (
+                <div className="h-48 flex items-center justify-center text-[#64748B]">
+                  <p className="text-xs">No data available</p>
+                </div>
+              );
+            }
+            
+            return (
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#1E3A8A" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#1E3A8A" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#64748B"
+                    style={{ fontSize: '10px' }}
+                    tick={{ fill: '#64748B' }}
+                  />
+                  <YAxis 
+                    stroke="#64748B"
+                    style={{ fontSize: '10px' }}
+                    tick={{ fill: '#64748B' }}
+                    tickFormatter={(value) => {
+                      if (Math.abs(value) >= 1000000) return `₦${(value / 1000000).toFixed(1)}M`;
+                      if (Math.abs(value) >= 1000) return `₦${(value / 1000).toFixed(1)}K`;
+                      return `₦${value}`;
+                    }}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      padding: '6px 10px',
+                      fontSize: '12px',
+                    }}
+                    formatter={(value: any) => [
+                      formatAmountWithCurrency(value),
+                      'Amount'
+                    ]}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="amount" 
+                    stroke="#1E3A8A" 
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorAmount)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            );
+          }, [transactions, userRole])}
           </div>
         </div>
 
         {/* Transactions Table */}
         <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
           <div className="p-6 border-b border-[#E5E7EB]">
-            <h2 className="text-lg font-semibold text-[#334155]">Transactions</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-[#334155]">Transaction History</h2>
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-[#64748B]">Filter:</label>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => {
+                    setTypeFilter(e.target.value as 'all' | 'escrow' | 'consultation');
+                    setCurrentPage(1);
+                  }}
+                  className="px-4 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] bg-white text-[#334155] hover:border-[#1E3A8A] transition-colors"
+                >
+                  <option value="all">All Transactions</option>
+                  <option value="escrow">Escrow Only</option>
+                  <option value="consultation">Consultations Only</option>
+                </select>
+              </div>
+            </div>
           </div>
           <div className="p-6">
             {isLoading ? (

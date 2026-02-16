@@ -92,7 +92,7 @@ export const consultationService = {
   /**
    * List client's consultations with pagination
    */
-  async list(params?: { per_page?: number }): Promise<{ consultations: Consultation[]; meta: PaginationMeta }> {
+  async list(params?: { per_page?: number; page?: number }): Promise<{ consultations: Consultation[]; meta: PaginationMeta }> {
     const response = await apiClient.get<ApiResponse<Consultation[]>>('/client/consultations', {
       params,
     });
@@ -109,7 +109,7 @@ export const consultationService = {
   /**
    * List company's consultations with pagination
    */
-  async listForCompany(params?: { per_page?: number }): Promise<{ consultations: Consultation[]; meta: PaginationMeta }> {
+  async listForCompany(params?: { per_page?: number; page?: number }): Promise<{ consultations: Consultation[]; meta: PaginationMeta }> {
     const response = await apiClient.get<ApiResponse<Consultation[]>>('/company/consultations', {
       params,
     });

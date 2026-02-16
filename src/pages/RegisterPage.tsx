@@ -147,7 +147,7 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
                 </label>
                 <Select
                   options={[
-                    { value: 'client', label: '👤 Client (Diaspora)' },
+                    { value: 'client', label: '👤 Client' },
                     { value: 'company', label: '🏗️ Construction Company' },
                   ]}
                   placeholder="Select account type"

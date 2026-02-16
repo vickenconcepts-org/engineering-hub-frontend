@@ -9,6 +9,9 @@ export interface CompanyProfile {
   company_name: string;
   registration_number: string;
   license_documents?: string[];
+  cac_certificate?: string;
+  memart?: string;
+  application_for_registration?: string;
   portfolio_links?: string[];
   specialization?: string[];
   consultation_fee?: number;
@@ -32,7 +35,9 @@ export interface CompanyProfile {
 export interface CreateCompanyProfileData {
   company_name: string;
   registration_number: string;
-  license_documents?: File[];
+  cac_certificate?: File;
+  memart?: File;
+  application_for_registration?: File;
   portfolio_links?: string[];
   specialization?: string[];
 }
@@ -43,7 +48,12 @@ export interface CreateCompanyProfileData {
 export interface UpdateCompanyProfileData {
   company_name?: string;
   registration_number?: string;
-  license_documents?: File[];
+  cac_certificate?: File;
+  memart?: File;
+  application_for_registration?: File;
+  remove_cac_certificate?: boolean;
+  remove_memart?: boolean;
+  remove_application_for_registration?: boolean;
   portfolio_links?: string[];
   specialization?: string[];
   consultation_fee?: number;
@@ -89,10 +99,23 @@ export const companyProfileService = {
       });
     }
     
-    if (data.license_documents && data.license_documents.length > 0) {
-      data.license_documents.forEach((file) => {
-        formData.append('license_documents[]', file);
-      });
+    if (data.cac_certificate) {
+      formData.append('cac_certificate', data.cac_certificate);
+    }
+    if (data.memart) {
+      formData.append('memart', data.memart);
+    }
+    if (data.application_for_registration) {
+      formData.append('application_for_registration', data.application_for_registration);
+    }
+    if (data.remove_cac_certificate) {
+      formData.append('remove_cac_certificate', '1');
+    }
+    if (data.remove_memart) {
+      formData.append('remove_memart', '1');
+    }
+    if (data.remove_application_for_registration) {
+      formData.append('remove_application_for_registration', '1');
     }
 
     // Don't set Content-Type header - let axios set it automatically with boundary for FormData
@@ -127,10 +150,14 @@ export const companyProfileService = {
       });
     }
     
-    if (data.license_documents && data.license_documents.length > 0) {
-      data.license_documents.forEach((file) => {
-        formData.append('license_documents[]', file);
-      });
+    if (data.cac_certificate) {
+      formData.append('cac_certificate', data.cac_certificate);
+    }
+    if (data.memart) {
+      formData.append('memart', data.memart);
+    }
+    if (data.application_for_registration) {
+      formData.append('application_for_registration', data.application_for_registration);
     }
     
     // Always send consultation_fee if it's defined (including 0)

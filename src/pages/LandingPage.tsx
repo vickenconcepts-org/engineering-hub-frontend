@@ -28,7 +28,8 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             </Button>
             <Button 
               onClick={() => onNavigate('/register')}
-              className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] transition-all duration-300"
+              className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] transition-all duration-500"
+              style={{ transitionDelay: '300ms' }}
             >
               Get Started
             </Button>
@@ -37,20 +38,30 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
       </header>
       
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#1E3A8A] via-[#2563EB] to-[#3B82F6] py-20">
+      <section className="relative overflow-hidden py-20">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url(https://images.unsplash.com/photo-1605159149559-abaaa7bc476c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjZ8fGNvbnN0cnVjdGlvbiUyMGJ1aWxkaW5nfGVufDB8fDB8fHww)'
+          }}
+        />
+        {/* Dark Overlay with Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1E3A8A]/90 via-[#2563EB]/85 to-[#3B82F6]/90" />
+        {/* Grid Pattern Overlay */}
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,transparent)]" />
-        <div className="relative max-w-7xl mx-auto px-6">
+        <div className="relative max-w-7xl mx-auto px-6 z-10">
           <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-6 animate-slide-up delay-100">
               <Star className="w-4 h-4 text-yellow-300 animate-pulse-slow" />
-              <span className="text-sm font-medium text-white">Trusted by 100+ Diaspora Families</span>
+              <span className="text-sm font-medium text-white">Trusted by 100+ International Families</span>
             </div>
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight animate-slide-up delay-200">
               Build Your Dream Home in Africa<br />
               <span className="text-[#FFD700]">With Complete Trust</span>
             </h1>
             <p className="text-xl text-white/90 mb-8 leading-relaxed animate-slide-up delay-300">
-              Secure escrow platform connecting Africans in the diaspora with verified construction companies. 
+              Secure escrow platform connecting Africans worldwide with verified construction companies. 
               Fund projects with confidence, approve milestones, and release payments only when work is complete.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-slide-up delay-400">
@@ -65,7 +76,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                 onClick={() => onNavigate('/consultations')}
                 className="inline-flex items-center justify-center gap-2 rounded-lg font-semibold border-2 border-white text-white hover:bg-white/10 px-8 py-6 text-lg backdrop-blur-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#1E3A8A]"
               >
-                Book Consultation
+                Book Consultation (Paid)
               </button>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 mt-12 text-white/80">
@@ -121,26 +132,26 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
           {[
             {
               icon: <Calendar className="w-8 h-8" />,
-              title: '1. Book Consultation',
-              description: 'Connect with verified construction companies for a free initial consultation.',
+              title: 'Book Consultation',
+              description: 'Connect with verified construction companies for an initial consultation',
               gradient: 'from-[#8B5CF6] to-[#6D28D9]',
             },
             {
               icon: <FileText className="w-8 h-8" />,
-              title: '2. Define Project',
-              description: 'Agree on scope, milestones, and payment schedule with complete transparency.',
+              title: 'Define Project',
+              description: 'Agree on scope, milestones, and payment schedule with complete transparency',
               gradient: 'from-[#1E3A8A] to-[#2563EB]',
             },
             {
               icon: <Shield className="w-8 h-8" />,
-              title: '3. Fund Escrow',
-              description: 'Your funds are held securely in escrow until each milestone is approved.',
+              title: 'Fund Escrow',
+              description: 'Your funds are held securely in escrow until each milestone is approved',
               gradient: 'from-[#16A34A] to-[#15803D]',
             },
             {
               icon: <CheckCircle className="w-8 h-8" />,
-              title: '4. Approve & Release',
-              description: 'Review photo/video evidence and approve payments for completed work.',
+              title: 'Approve & Release',
+              description: 'Review photo/video evidence and approve payments for completed work',
               gradient: 'from-[#F59E0B] to-[#D97706]',
             },
           ].map((step, index) => (
@@ -148,9 +159,6 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
               <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-lg p-8 h-full hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
                 <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${step.gradient} text-white mb-6 group-hover:scale-110 transition-transform duration-300 animate-float`} style={{ animationDelay: `${index * 0.2}s` }}>
                   {step.icon}
-                </div>
-                <div className="absolute top-8 right-8 text-6xl font-bold text-[#F8FAFC] opacity-50">
-                  {index + 1}
                 </div>
                 <h3 className="text-xl font-semibold text-[#334155] mb-3">
                   {step.title}
@@ -170,7 +178,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
           <div className="text-center mb-16 animate-slide-up delay-100">
             <h2 className="text-4xl font-bold text-[#334155] mb-4">Why Escrow Matters</h2>
             <p className="text-lg text-[#64748B] max-w-2xl mx-auto">
-              Complete financial control and transparency throughout your construction project.
+              Complete financial control and transparency throughout your construction project
             </p>
           </div>
           
@@ -179,19 +187,19 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
               {
                 icon: <Lock className="w-8 h-8" />,
                 title: 'Full Financial Control',
-                description: 'Release funds only when you approve completed milestones. No surprises, no upfront risks.',
+                description: 'Release funds only when you approve completed milestones. No surprises, no upfront risks',
                 gradient: 'from-[#1E3A8A] to-[#2563EB]',
               },
               {
                 icon: <Shield className="w-8 h-8" />,
                 title: 'Verified Companies Only',
-                description: 'Every construction company is thoroughly vetted and verified by our admin team.',
+                description: 'Every construction company is thoroughly vetted and verified by our admin team',
                 gradient: 'from-[#16A34A] to-[#15803D]',
               },
               {
                 icon: <CheckCircle className="w-8 h-8" />,
                 title: 'Evidence-Based Approvals',
-                description: 'Review photos and videos of completed work before releasing any payment.',
+                description: 'Review photos and videos of completed work before releasing any payment',
                 gradient: 'from-[#F59E0B] to-[#D97706]',
               },
             ].map((item, index) => (
@@ -228,7 +236,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             Ready to Start Building?
           </h2>
           <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto animate-slide-up delay-200">
-            Join thousands of diaspora families building their dream homes in Africa with complete trust and security.
+            Join thousands of international families building their dream homes in Africa with complete trust and security
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-scale-in delay-300">
             <button
@@ -258,11 +266,11 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-[#334155]">BuildTrust</h3>
-                <p className="text-xs text-[#64748B]">Secure construction for the diaspora</p>
+                <p className="text-xs text-[#64748B]">Secure construction for international clients</p>
               </div>
             </div>
             <p className="text-sm text-[#64748B] text-center md:text-right">
-              © 2026 BuildTrust. All rights reserved. Secure construction platform for Africans in the diaspora.
+              © 2026 BuildTrust. All rights reserved. Secure construction platform for Africans worldwide.
             </p>
           </div>
         </div>

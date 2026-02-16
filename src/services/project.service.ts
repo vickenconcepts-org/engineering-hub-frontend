@@ -56,6 +56,14 @@ export interface Project {
   title: string;
   description?: string;
   location: string;
+  location_country?: string;
+  location_state?: string;
+  location_address?: string;
+  preview_image_url?: string;
+  drawing_architectural_url?: string;
+  drawing_structural_url?: string;
+  drawing_mechanical_url?: string;
+  drawing_technical_url?: string;
   budget_min?: number;
   budget_max?: number;
   status: 'draft' | 'active' | 'completed' | 'disputed' | 'cancelled';
@@ -74,6 +82,13 @@ export interface Project {
     status: 'open' | 'resolved' | 'escalated';
     created_at: string;
   }>;
+  documents?: Array<{
+    id: string;
+    title: string;
+    file_url: string;
+    uploaded_by?: string;
+    created_at?: string;
+  }>;
   created_at: string;
   updated_at: string;
 }
@@ -86,8 +101,23 @@ export interface CreateProjectData {
   title: string;
   description?: string;
   location: string;
+  location_country?: string;
+  location_state?: string;
+  location_address?: string;
   budget_min?: number;
   budget_max?: number;
+}
+
+export interface UploadProjectDocumentsData {
+  preview_image?: File;
+  drawing_architectural?: File;
+  drawing_structural?: File;
+  drawing_mechanical?: File;
+  drawing_technical?: File;
+  extra_documents?: Array<{
+    title: string;
+    file: File;
+  }>;
 }
 
 /**
@@ -194,6 +224,42 @@ export const projectService = {
   async completeForCompany(projectId: string): Promise<Project> {
     const response = await apiClient.post<ApiResponse<Project>>(
       `/company/projects/${projectId}/complete`
+    );
+    return extractData<Project>(response);
+  },
+
+  /**
+   * Upload project documents (company only)
+   */
+  async uploadDocuments(projectId: string, data: UploadProjectDocumentsData): Promise<Project> {
+    const formData = new FormData();
+
+    if (data.preview_image) {
+      formData.append('preview_image', data.preview_image);
+    }
+    if (data.drawing_architectural) {
+      formData.append('drawing_architectural', data.drawing_architectural);
+    }
+    if (data.drawing_structural) {
+      formData.append('drawing_structural', data.drawing_structural);
+    }
+    if (data.drawing_mechanical) {
+      formData.append('drawing_mechanical', data.drawing_mechanical);
+    }
+    if (data.drawing_technical) {
+      formData.append('drawing_technical', data.drawing_technical);
+    }
+
+    if (data.extra_documents && data.extra_documents.length > 0) {
+      data.extra_documents.forEach((doc, index) => {
+        formData.append(`extra_titles[${index}]`, doc.title);
+        formData.append(`extra_files[${index}]`, doc.file);
+      });
+    }
+
+    const response = await apiClient.post<ApiResponse<Project>>(
+      `/company/projects/${projectId}/documents`,
+      formData
     );
     return extractData<Project>(response);
   },

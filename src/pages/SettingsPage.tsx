@@ -5,6 +5,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { StatusBadge } from '../components/StatusBadge';
+import { FilePreviewInput } from '../components/FilePreviewInput';
 import { companyProfileService, CompanyProfile, CreateCompanyProfileData } from '../services/company-profile.service';
 import { paymentAccountService, PaymentAccount, CreatePaymentAccountData } from '../services/payment-account.service';
 
@@ -27,7 +28,12 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
     consultation_fee: 0,
   });
   
-  const [licenseFiles, setLicenseFiles] = useState<File[]>([]);
+  const [cacCertificate, setCacCertificate] = useState<File | null>(null);
+  const [memart, setMemart] = useState<File | null>(null);
+  const [applicationForRegistration, setApplicationForRegistration] = useState<File | null>(null);
+  const [removeCacCertificate, setRemoveCacCertificate] = useState(false);
+  const [removeMemart, setRemoveMemart] = useState(false);
+  const [removeApplicationForRegistration, setRemoveApplicationForRegistration] = useState(false);
   const [newPortfolioLink, setNewPortfolioLink] = useState('');
   const [newSpecialization, setNewSpecialization] = useState('');
   
@@ -52,6 +58,9 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
           specialization: fetchedProfile.specialization || [],
           consultation_fee: fetchedProfile.consultation_fee ?? 0,
         });
+        setRemoveCacCertificate(false);
+        setRemoveMemart(false);
+        setRemoveApplicationForRegistration(false);
       }
     } catch (error) {
       console.error('Failed to load profile:', error);
@@ -60,33 +69,6 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
     }
   };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      // Validate file types and sizes
-      const validFiles = files.filter(file => {
-        const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-        const isValidType = validTypes.includes(file.type);
-        const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
-        
-        if (!isValidType) {
-          toast.error(`${file.name} is not a valid file type. Please upload PDF, JPG, or PNG files.`);
-          return false;
-        }
-        if (!isValidSize) {
-          toast.error(`${file.name} exceeds 5MB limit.`);
-          return false;
-        }
-        return true;
-      });
-      
-      setLicenseFiles(prev => [...prev, ...validFiles]);
-    }
-  };
-  
-  const removeFile = (index: number) => {
-    setLicenseFiles(prev => prev.filter((_, i) => i !== index));
-  };
   
   const addPortfolioLink = () => {
     if (newPortfolioLink.trim() && isValidUrl(newPortfolioLink)) {
@@ -165,11 +147,27 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
         if (formData.specialization.length > 0) {
           profileData.specialization = formData.specialization;
         }
-        if (licenseFiles.length > 0) {
-          profileData.license_documents = licenseFiles;
-        }
       } else {
         console.log('Company is approved - only sending consultation_fee');
+      }
+      
+      if (cacCertificate) {
+        profileData.cac_certificate = cacCertificate;
+      }
+      if (memart) {
+        profileData.memart = memart;
+      }
+      if (applicationForRegistration) {
+        profileData.application_for_registration = applicationForRegistration;
+      }
+      if (removeCacCertificate) {
+        profileData.remove_cac_certificate = true;
+      }
+      if (removeMemart) {
+        profileData.remove_memart = true;
+      }
+      if (removeApplicationForRegistration) {
+        profileData.remove_application_for_registration = true;
       }
       
       // Always include consultation_fee if it's defined (even if 0) - can be updated anytime
@@ -210,7 +208,12 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
       await loadProfile();
       
       // Clear form
-      setLicenseFiles([]);
+      setCacCertificate(null);
+      setMemart(null);
+      setApplicationForRegistration(null);
+      setRemoveCacCertificate(false);
+      setRemoveMemart(false);
+      setRemoveApplicationForRegistration(false);
     } catch (error) {
       console.error('Failed to save profile:', error);
       // Error already handled by API client interceptor
@@ -396,27 +399,31 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
                 />
               </div>
               
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Input
-                    id="payment-account-number"
-                    label="Account Number"
-                    placeholder="0123456789"
-                    value={accountFormData.account_number}
-                    onChange={(e) => {
-                      setAccountFormData(prev => ({ ...prev, account_number: e.target.value }));
-                    }}
-                    required
-                  />
-                </div>
-                <div className="flex items-end pb-2">
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-[#64748B] mb-2">
+                  Account Number <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <input
+                      id="payment-account-number"
+                      type="text"
+                      placeholder="0123456789"
+                      value={accountFormData.account_number}
+                      onChange={(e) => {
+                        setAccountFormData(prev => ({ ...prev, account_number: e.target.value }));
+                      }}
+                      required
+                      className="w-full px-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none transition-colors text-sm text-[#334155] placeholder:text-[#64748B]"
+                    />
+                  </div>
                   <Button
                     type="button"
                     variant="secondary"
                     size="sm"
                     onClick={handleVerifyAccount}
                     disabled={!accountFormData.account_number || !accountFormData.bank_code || isVerifyingAccount}
-                    className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                    className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all disabled:opacity-50 self-end"
                   >
                     {isVerifyingAccount ? 'Verifying...' : 'Verify'}
                   </Button>
@@ -506,55 +513,101 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
             )}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {paymentAccounts.map((account) => (
               <div
                 key={account.id}
-                className={`p-4 rounded-lg border ${
+                className={`relative p-5 rounded-xl border transition-all duration-200 hover:shadow-lg ${
                   account.is_default
-                    ? 'border-[#1E3A8A] bg-gradient-to-br from-[#1E3A8A]/5 to-[#2563EB]/5'
-                    : 'border-[#E5E7EB] bg-white'
+                    ? 'border-[#1E3A8A] bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] text-white shadow-lg'
+                    : 'border-[#E5E7EB] bg-white hover:border-[#1E3A8A]/30'
                 }`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-[#334155]">{account.account_name}</p>
-                      {account.is_default && (
-                        <span className="px-2.5 py-1 bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] text-white text-xs rounded-lg flex items-center gap-1 font-medium">
-                          <Star className="w-3 h-3" />
-                          Default
-                        </span>
-                      )}
-                      {account.is_verified && (
-                        <span className="px-2.5 py-1 bg-[#D1FAE5] text-[#065F46] border border-[#A7F3D0] text-xs rounded-lg font-medium">
-                          Verified
-                        </span>
-                      )}
+                {/* Default Badge */}
+                {account.is_default && (
+                  <div className="absolute top-3 right-3">
+                    <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                      <Star className="w-4 h-4 text-white fill-white" />
                     </div>
-                    <p className="text-sm text-[#64748B]">
-                      {account.account_number} • {account.bank_name || `Bank Code: ${account.bank_code}`}
+                  </div>
+                )}
+                
+                <div className="space-y-3">
+                  {/* Bank Icon and Name */}
+                  <div className="flex items-start gap-3">
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      account.is_default
+                        ? 'bg-white/20 backdrop-blur-sm'
+                        : 'bg-gradient-to-br from-[#1E3A8A]/10 to-[#2563EB]/10'
+                    }`}>
+                      <CreditCard className={`w-6 h-6 ${account.is_default ? 'text-white' : 'text-[#1E3A8A]'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-semibold text-base mb-1 truncate ${
+                        account.is_default ? 'text-white' : 'text-[#334155]'
+                      }`}>
+                        {account.account_name}
+                      </p>
+                      <p className={`text-xs ${
+                        account.is_default ? 'text-white/80' : 'text-[#64748B]'
+                      }`}>
+                        {account.bank_name || `Bank: ${account.bank_code}`}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Account Number */}
+                  <div className={`pt-3 border-t ${
+                    account.is_default ? 'border-white/20' : 'border-[#E5E7EB]'
+                  }`}>
+                    <p className={`text-xs uppercase tracking-wide mb-1 ${
+                      account.is_default ? 'text-white/70' : 'text-[#64748B]'
+                    }`}>
+                      Account Number
+                    </p>
+                    <p className={`font-mono text-sm font-semibold ${
+                      account.is_default ? 'text-white' : 'text-[#334155]'
+                    }`}>
+                      {account.account_number}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  
+                  {/* Status Badge */}
+                  {account.is_verified && (
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                        account.is_default
+                          ? 'bg-white/20 text-white border border-white/30'
+                          : 'bg-[#D1FAE5] text-[#065F46] border border-[#A7F3D0]'
+                      }`}>
+                        ✓ Verified
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-2">
                     {!account.is_default && (
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => handleSetDefault(account.id)}
-                        className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
+                        className="flex-1 bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all text-xs"
                       >
                         Set Default
                       </Button>
                     )}
-                    <Button
-                      variant="secondary"
-                      size="sm"
+                    <button
+                      type="button"
                       onClick={() => handleDeleteAccount(account.id)}
-                      className="hover:bg-[#FEE2E2] hover:text-[#DC2626]"
+                      className={`p-1.5 rounded transition-all ${
+                        account.is_default
+                          ? 'text-white/70 hover:text-white hover:bg-white/10'
+                          : 'text-[#64748B] hover:text-[#DC2626] hover:bg-[#FEE2E2]/50'
+                      }`}
                     >
                       <Trash2 className="w-4 h-4" />
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -630,6 +683,38 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
         {/* Profile Status Banner */}
         {profile && (
           <>
+            {/* Rejection Warning Banner */}
+            {profile.status === 'rejected' && (
+              <div className="bg-gradient-to-r from-[#DC2626] to-[#EF4444] rounded-xl border border-[#B91C1C] shadow-lg p-6 text-white mb-6">
+                <div className="flex items-start gap-4">
+                  <AlertCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold mb-2">Company Profile Rejected</h3>
+                    <p className="text-sm opacity-90 mb-4">
+                      Your company profile has been rejected. You cannot receive consultations or projects until your profile is approved.
+                      <strong className="block mt-2">Please review your information and reapply for approval.</strong>
+                    </p>
+                    <button
+                      onClick={async () => {
+                        try {
+                          // Update profile to set status back to pending
+                          await companyProfileService.update({});
+                          await companyProfileService.appealSuspension('I would like to reapply for company profile approval.');
+                          toast.success('Reapplication submitted successfully. Our admin team will review your profile and contact you soon.');
+                          loadProfile();
+                        } catch (error: any) {
+                          toast.error(error.response?.data?.message || 'Failed to submit reapplication');
+                        }
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors px-4 py-2 text-sm bg-white text-[#DC2626] hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DC2626]"
+                    >
+                      Reapply for Approval
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Suspension Warning Banner */}
             {profile.status === 'suspended' && (
               <div className="bg-gradient-to-r from-[#DC2626] to-[#EF4444] rounded-xl border border-[#B91C1C] shadow-lg p-6 text-white mb-6">
@@ -715,43 +800,48 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
               </div>
             </div>
             <div className="p-6 space-y-6">
-            {/* Company Name */}
-            <div>
-              <label className="block text-sm font-medium text-[#334155] mb-2">
-                Company Name <span className="text-red-500">*</span>
-              </label>
-              <Input
-                type="text"
-                value={formData.company_name}
-                onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                placeholder="Enter company name"
-                required
-                disabled={profile?.is_approved}
-              />
-            </div>
-            
-            {/* Registration Number */}
-            <div>
-              <label className="block text-sm font-medium text-[#334155] mb-2">
-                Registration Number <span className="text-red-500">*</span>
-              </label>
-              <Input
-                type="text"
-                value={formData.registration_number}
-                onChange={(e) => setFormData({ ...formData, registration_number: e.target.value })}
-                placeholder="Enter registration number (e.g., RC123456)"
-                required
-                disabled={profile?.is_approved}
-              />
-              <p className="text-xs text-[#64748B] mt-1">
-                Your official company registration number
-              </p>
+            {/* Company Name and Registration Number - Two Column Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Company Name */}
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-2">
+                  Company Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="text"
+                  value={formData.company_name}
+                  onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                  placeholder="Enter company name"
+                  required
+                  disabled={profile?.is_approved}
+                />
+              </div>
+              
+              {/* Registration Number */}
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-2">
+                  Company Registration Number <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="text"
+                  value={formData.registration_number}
+                  onChange={(e) => setFormData({ ...formData, registration_number: e.target.value })}
+                  placeholder="Enter your official company registration number (e.g., RC123456)"
+                  required
+                  disabled={profile?.is_approved}
+                />
+                <p className="text-xs text-[#64748B] mt-1">
+                  Your official company registration number issued by the corporate affairs commission
+                </p>
+              </div>
             </div>
             
             {/* Consultation Fee */}
             <div>
+              <label className="block text-sm font-semibold text-[#334155] mb-2">
+                Consultation Fee (NGN) <span className="text-xs font-normal text-[#64748B]">(Optional)</span>
+              </label>
               <Input
-                label="Consultation Fee (NGN)"
                 type="number"
                 value={formData.consultation_fee === 0 ? 0 : (formData.consultation_fee || '')}
                 onChange={(e) => {
@@ -763,188 +853,171 @@ export function SettingsPage({ onNavigate, userRole }: SettingsPageProps) {
                 placeholder="e.g., 25000"
                 min={0}
                 step="100"
-                helperText="Set your default consultation fee. Clients can override this when booking."
               />
+              <p className="text-xs text-[#334155] mt-2 font-medium">
+                Set your default consultation fee. Clients can override this when booking.
+              </p>
             </div>
             
-            {/* License Documents */}
-            <div>
-              <label className="block text-sm font-medium text-[#334155] mb-2">
-                License Documents
-              </label>
-              <div className="border-2 border-dashed border-[#E5E7EB] rounded-lg p-6 text-center">
-                <Upload className="w-8 h-8 text-[#64748B] mx-auto mb-2" />
-                <p className="text-sm text-[#64748B] mb-2">
-                  Upload license documents (PDF, JPG, PNG - Max 5MB each)
-                </p>
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/jpg,image/png"
-                  onChange={handleFileChange}
-                  disabled={profile?.is_approved || profile?.status === 'suspended'}
-                  className="hidden"
-                  id="license-upload"
+            {/* CAC Documents - CAC Certificate on its own, MEMART and Application side by side */}
+            <div className="space-y-6">
+              {/* CAC Certificate - Full Width */}
+              <FilePreviewInput
+                label="CAC Certificate"
+                value={removeCacCertificate ? null : (cacCertificate || profile?.cac_certificate || null)}
+                onChange={(file) => {
+                  setCacCertificate(file);
+                  if (file) {
+                    setRemoveCacCertificate(false);
+                  } else if (profile?.cac_certificate) {
+                    setRemoveCacCertificate(true);
+                  }
+                }}
+                disabled={profile?.status === 'suspended'}
+              />
+              
+              {/* MEMART and Application For Registration - Two Column Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FilePreviewInput
+                  label="MEMART"
+                  value={removeMemart ? null : (memart || profile?.memart || null)}
+                  onChange={(file) => {
+                    setMemart(file);
+                    if (file) {
+                      setRemoveMemart(false);
+                    } else if (profile?.memart) {
+                      setRemoveMemart(true);
+                    }
+                  }}
+                  disabled={profile?.status === 'suspended'}
                 />
-                <label 
-                  htmlFor="license-upload"
-                  className={`inline-flex items-center justify-center px-4 py-2 border border-[#E5E7EB] rounded-lg text-sm font-medium text-[#334155] bg-white hover:bg-[#F8FAFC] transition-colors ${
-                    profile?.is_approved || profile?.status === 'suspended' 
-                      ? 'opacity-50 cursor-not-allowed pointer-events-none' 
-                      : 'cursor-pointer'
-                  }`}
-                >
-                  Choose Files
-                </label>
+                
+                <FilePreviewInput
+                  label="Application For Registration of Company"
+                  value={removeApplicationForRegistration ? null : (applicationForRegistration || profile?.application_for_registration || null)}
+                  onChange={(file) => {
+                    setApplicationForRegistration(file);
+                    if (file) {
+                      setRemoveApplicationForRegistration(false);
+                    } else if (profile?.application_for_registration) {
+                      setRemoveApplicationForRegistration(true);
+                    }
+                  }}
+                  disabled={profile?.status === 'suspended'}
+                />
               </div>
-              
-              {/* Selected Files */}
-              {licenseFiles.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {licenseFiles.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 bg-[#F8FAFC] rounded border border-[#E5E7EB]"
-                    >
-                      <span className="text-sm text-[#334155]">{file.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(index)}
-                        disabled={profile?.is_approved}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+            </div>
+            
+            {/* Portfolio Links and Specialization - Two Column Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Portfolio Links */}
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-2">
+                  Portfolio Links
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <Input
+                    type="url"
+                    value={newPortfolioLink}
+                    onChange={(e) => setNewPortfolioLink(e.target.value)}
+                    placeholder="https://example.com/portfolio"
+                    disabled={profile?.is_approved}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addPortfolioLink();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    onClick={addPortfolioLink}
+                    disabled={profile?.is_approved}
+                    variant="outline"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
-              )}
-              
-              {/* Existing License Documents */}
-              {profile?.license_documents && profile.license_documents.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-sm font-medium text-[#334155] mb-2">Current Documents:</p>
+                
+                {formData.portfolio_links.length > 0 && (
                   <div className="space-y-2">
-                    {profile.license_documents.map((doc, index) => (
+                    {formData.portfolio_links.map((link, index) => (
                       <div
                         key={index}
                         className="flex items-center justify-between p-2 bg-[#F8FAFC] rounded border border-[#E5E7EB]"
                       >
-                        <span className="text-sm text-[#334155]">{doc}</span>
+                        <a
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-[#1E3A8A] hover:underline truncate pr-2"
+                        >
+                          {link}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => removePortfolioLink(index)}
+                          disabled={profile?.is_approved}
+                          className="text-red-600 hover:text-red-700 flex-shrink-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
-            
-            {/* Portfolio Links */}
-            <div>
-              <label className="block text-sm font-medium text-[#334155] mb-2">
-                Portfolio Links
-              </label>
-              <div className="flex gap-2 mb-2">
-                <Input
-                  type="url"
-                  value={newPortfolioLink}
-                  onChange={(e) => setNewPortfolioLink(e.target.value)}
-                  placeholder="https://example.com/portfolio"
-                  disabled={profile?.is_approved}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addPortfolioLink();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  onClick={addPortfolioLink}
-                  disabled={profile?.is_approved}
-                  variant="outline"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
+                )}
               </div>
               
-              {formData.portfolio_links.length > 0 && (
-                <div className="space-y-2">
-                  {formData.portfolio_links.map((link, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 bg-[#F8FAFC] rounded border border-[#E5E7EB]"
-                    >
-                      <a
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-[#1E3A8A] hover:underline"
-                      >
-                        {link}
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => removePortfolioLink(index)}
-                        disabled={profile?.is_approved}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+              {/* Specialization */}
+              <div>
+                <label className="block text-sm font-medium text-[#334155] mb-2">
+                  Specialization
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <Input
+                    type="text"
+                    value={newSpecialization}
+                    onChange={(e) => setNewSpecialization(e.target.value)}
+                    placeholder="e.g., Residential, Commercial"
+                    disabled={profile?.is_approved}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addSpecialization();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    onClick={addSpecialization}
+                    disabled={profile?.is_approved}
+                    variant="outline"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
-              )}
-            </div>
-            
-            {/* Specialization */}
-            <div>
-              <label className="block text-sm font-medium text-[#334155] mb-2">
-                Specialization
-              </label>
-              <div className="flex gap-2 mb-2">
-                <Input
-                  type="text"
-                  value={newSpecialization}
-                  onChange={(e) => setNewSpecialization(e.target.value)}
-                  placeholder="e.g., Residential, Commercial"
-                  disabled={profile?.is_approved}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addSpecialization();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  onClick={addSpecialization}
-                  disabled={profile?.is_approved}
-                  variant="outline"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
+                
+                {formData.specialization.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.specialization.map((spec, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-1 px-3 py-1 bg-[#DBEAFE] text-[#1E40AF] rounded-full text-sm"
+                      >
+                        <span>{spec}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeSpecialization(index)}
+                          disabled={profile?.is_approved}
+                          className="text-[#1E40AF] hover:text-[#1E3A8A]"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              
-              {formData.specialization.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {formData.specialization.map((spec, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-1 px-3 py-1 bg-[#DBEAFE] text-[#1E40AF] rounded-full text-sm"
-                    >
-                      <span>{spec}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeSpecialization(index)}
-                        disabled={profile?.is_approved}
-                        className="text-[#1E40AF] hover:text-[#1E3A8A]"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
             
               {/* Submit Button */}

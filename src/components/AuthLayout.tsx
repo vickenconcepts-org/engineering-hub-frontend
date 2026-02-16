@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/auth.service';
+import { companyProfileService, CompanyProfile } from '../services/company-profile.service';
+import { StatusBadge } from './StatusBadge';
 import toast from 'react-hot-toast';
 import { 
   LayoutDashboard, 
@@ -44,6 +46,7 @@ export function AuthLayout({
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(73);
   const [isMobile, setIsMobile] = useState(false);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const headerRef = useRef<HTMLElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -74,6 +77,21 @@ export function AuthLayout({
     window.addEventListener('resize', updateHeaderHeight);
     return () => window.removeEventListener('resize', updateHeaderHeight);
   }, []);
+
+  // Fetch company profile if user is a company
+  useEffect(() => {
+    if (userRole === 'company') {
+      companyProfileService.get()
+        .then(setCompanyProfile)
+        .catch((error) => {
+          // Profile might not exist yet, that's okay
+          if (error.response?.status !== 404) {
+            console.error('Failed to load company profile:', error);
+          }
+        });
+    }
+  }, [userRole]);
+  
   
   const handleLogout = async () => {
     try {
@@ -147,7 +165,15 @@ export function AuthLayout({
                 {userName.charAt(0).toUpperCase()}
               </div>
               <div className="text-left">
-                <p className="text-sm font-semibold text-[#1E3A8A]">{userName}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-[#1E3A8A]">{userName}</p>
+                  {userRole === 'company' && companyProfile && (
+                    <StatusBadge 
+                      status={companyProfile.status as any}
+                      className="text-xs"
+                    />
+                  )}
+                </div>
                 <p className="text-xs text-[#64748B] capitalize">{userRole}</p>
               </div>
               <ChevronDown className="w-4 h-4 text-[#64748B] group-hover:text-[#1E3A8A] transition-colors" />
