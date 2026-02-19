@@ -78,6 +78,12 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
       } else {
         fetchedProject = await projectService.get(projectId);
       }
+      // Debug: Log document update requests
+      console.log('Loaded project with documentUpdateRequests:', {
+        hasRequests: !!fetchedProject.documentUpdateRequests,
+        count: fetchedProject.documentUpdateRequests?.length || 0,
+        requests: fetchedProject.documentUpdateRequests
+      });
       setProject(fetchedProject);
       setPreviewImageFile(null);
       setDrawingFiles({
@@ -313,17 +319,31 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   };
 
   const hasPendingRequest = (documentType: string, extraDocId?: string): any => {
-    if (!project?.documentUpdateRequests) return null;
+    if (!project?.documentUpdateRequests || !Array.isArray(project.documentUpdateRequests)) {
+      return null;
+    }
     
-    return project.documentUpdateRequests.find((req: any) => 
-      req.document_type === documentType &&
-      req.status === 'pending' &&
-      (extraDocId ? req.extra_document_id === extraDocId : !req.extra_document_id)
-    );
+    const found = project.documentUpdateRequests.find((req: any) => {
+      const typeMatch = req.document_type === documentType;
+      const statusMatch = req.status === 'pending';
+      const extraDocMatch = extraDocId 
+        ? req.extra_document_id === extraDocId 
+        : !req.extra_document_id;
+      
+      const matches = typeMatch && statusMatch && extraDocMatch;
+      if (matches) {
+        console.log('Found pending request:', { documentType, extraDocId, request: req });
+      }
+      return matches;
+    });
+    
+    return found || null;
   };
 
   const getDocumentUpdateRequests = (): any[] => {
-    if (!project?.documentUpdateRequests) return [];
+    if (!project?.documentUpdateRequests || !Array.isArray(project.documentUpdateRequests)) {
+      return [];
+    }
     return project.documentUpdateRequests.filter((req: any) => req.status === 'pending');
   };
 
@@ -1107,7 +1127,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                 <p className="text-xs text-[#64748B]">Upload the final look of the project.</p>
               </div>
               {userRole === 'company' && project.preview_image_url && !canUpdateDocument('preview_image') && (
-                <div>
+                <div className="flex justify-end">
                   {hasPendingRequest('preview_image') ? (
                     <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
                       <Clock className="w-3 h-3" />
