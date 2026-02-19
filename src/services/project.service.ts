@@ -89,6 +89,26 @@ export interface Project {
     uploaded_by?: string;
     created_at?: string;
   }>;
+  documentUpdateRequests?: Array<{
+    id: string;
+    project_id: string;
+    document_type: string;
+    extra_document_id?: string;
+    requested_by?: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    status: 'pending' | 'granted' | 'denied';
+    reason?: string;
+    granted_at?: string;
+    denied_at?: string;
+    extra_document?: {
+      id: string;
+      title: string;
+      file_url: string;
+    };
+  }>;
   created_at: string;
   updated_at: string;
 }

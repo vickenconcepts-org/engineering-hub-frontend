@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Building2, DollarSign, Calendar, MapPin, CheckCircle, Clock, AlertCircle, X, MessageSquare, FolderKanban, Shield, Image as ImageIcon, Plus, Eye, Lock, Unlock, Send } from 'lucide-react';
+import { ArrowLeft, Building2, DollarSign, Calendar, MapPin, CheckCircle, Clock, AlertCircle, X, MessageSquare, FolderKanban, Shield, Image as ImageIcon, Plus, Eye, Lock, Unlock, Send, Check, XCircle, FileText } from 'lucide-react';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
@@ -310,6 +310,43 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
     }
     
     return true; // For extra documents, can always add new ones
+  };
+
+  const hasPendingRequest = (documentType: string, extraDocId?: string): any => {
+    if (!project?.documentUpdateRequests) return null;
+    
+    return project.documentUpdateRequests.find((req: any) => 
+      req.document_type === documentType &&
+      req.status === 'pending' &&
+      (extraDocId ? req.extra_document_id === extraDocId : !req.extra_document_id)
+    );
+  };
+
+  const getDocumentUpdateRequests = (): any[] => {
+    if (!project?.documentUpdateRequests) return [];
+    return project.documentUpdateRequests.filter((req: any) => req.status === 'pending');
+  };
+
+  const handleGrantDocumentUpdate = async (requestId: string) => {
+    try {
+      await projectService.grantDocumentUpdate(requestId);
+      toast.success('Document update request granted successfully.');
+      await loadProject();
+    } catch (error: any) {
+      console.error('Failed to grant document update:', error);
+      toast.error(error.response?.data?.message || 'Failed to grant request');
+    }
+  };
+
+  const handleDenyDocumentUpdate = async (requestId: string) => {
+    try {
+      await projectService.denyDocumentUpdate(requestId);
+      toast.success('Document update request denied.');
+      await loadProject();
+    } catch (error: any) {
+      console.error('Failed to deny document update:', error);
+      toast.error(error.response?.data?.message || 'Failed to deny request');
+    }
   };
   
   const getMilestoneStatusIcon = (status: string) => {
@@ -946,6 +983,88 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
         </div>
       )}
 
+      {/* Document Update Requests - Client Side */}
+      {userRole === 'client' && getDocumentUpdateRequests().length > 0 && (
+        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
+          <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-[#F59E0B]" />
+              <h3 className="text-lg font-semibold text-[#334155]">Document Update Requests</h3>
+            </div>
+            <p className="text-xs text-[#64748B] mt-2">
+              The company has requested permission to update the following documents. Please review and approve or deny each request.
+            </p>
+          </div>
+          <div className="p-6 space-y-4">
+            {getDocumentUpdateRequests().map((request: any) => {
+              const getDocumentName = () => {
+                switch (request.document_type) {
+                  case 'preview_image':
+                    return 'Project Preview Image';
+                  case 'drawing_architectural':
+                    return 'Architectural Drawing';
+                  case 'drawing_structural':
+                    return 'Structural Drawing';
+                  case 'drawing_mechanical':
+                    return 'Mechanical Drawing';
+                  case 'drawing_technical':
+                    return 'Technical Drawing';
+                  case 'extra_document':
+                    return request.extra_document?.title || 'Extra Document';
+                  default:
+                    return 'Document';
+                }
+              };
+
+              return (
+                <div
+                  key={request.id}
+                  className="bg-[#FEF3C7] border border-[#FCD34D] rounded-lg p-4"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4 text-[#92400E]" />
+                        <h4 className="text-sm font-semibold text-[#334155]">
+                          {getDocumentName()}
+                        </h4>
+                      </div>
+                      {request.reason && (
+                        <p className="text-xs text-[#64748B] mb-2">
+                          <span className="font-medium">Reason:</span> {request.reason}
+                        </p>
+                      )}
+                      <p className="text-xs text-[#64748B]">
+                        Requested by: {request.requested_by?.name || 'Company'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleGrantDocumentUpdate(request.id)}
+                        className="bg-[#16A34A] hover:bg-[#15803D] text-white text-xs"
+                      >
+                        <Check className="w-3 h-3 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDenyDocumentUpdate(request.id)}
+                        className="border-[#DC2626] text-[#DC2626] hover:bg-[#FEE2E2] text-xs"
+                      >
+                        <XCircle className="w-3 h-3 mr-1" />
+                        Deny
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Project Files */}
       <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
         <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
@@ -988,15 +1107,24 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                 <p className="text-xs text-[#64748B]">Upload the final look of the project.</p>
               </div>
               {userRole === 'company' && project.preview_image_url && !canUpdateDocument('preview_image') && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openRequestUpdateModal('preview_image')}
-                  className="text-xs"
-                >
-                  <Send className="w-3 h-3 mr-1" />
-                  Request Update
-                </Button>
+                <div>
+                  {hasPendingRequest('preview_image') ? (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
+                      <Clock className="w-3 h-3" />
+                      Request Awaiting Approval
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openRequestUpdateModal('preview_image')}
+                      className="text-xs"
+                    >
+                      <Send className="w-3 h-3 mr-1" />
+                      Request Update
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
             <FilePreviewInput
@@ -1017,15 +1145,22 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
               <div>
                 {userRole === 'company' && project.drawing_architectural_url && !canUpdateDocument('drawing_architectural') && (
                   <div className="mb-2 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openRequestUpdateModal('drawing_architectural')}
-                      className="text-xs"
-                    >
-                      <Send className="w-3 h-3 mr-1" />
-                      Request Update
-                    </Button>
+                    {hasPendingRequest('drawing_architectural') ? (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
+                        <Clock className="w-3 h-3" />
+                        Request Awaiting Approval
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openRequestUpdateModal('drawing_architectural')}
+                        className="text-xs"
+                      >
+                        <Send className="w-3 h-3 mr-1" />
+                        Request Update
+                      </Button>
+                    )}
                   </div>
                 )}
                 <FilePreviewInput
@@ -1039,15 +1174,22 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
               <div>
                 {userRole === 'company' && project.drawing_structural_url && !canUpdateDocument('drawing_structural') && (
                   <div className="mb-2 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openRequestUpdateModal('drawing_structural')}
-                      className="text-xs"
-                    >
-                      <Send className="w-3 h-3 mr-1" />
-                      Request Update
-                    </Button>
+                    {hasPendingRequest('drawing_structural') ? (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
+                        <Clock className="w-3 h-3" />
+                        Request Awaiting Approval
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openRequestUpdateModal('drawing_structural')}
+                        className="text-xs"
+                      >
+                        <Send className="w-3 h-3 mr-1" />
+                        Request Update
+                      </Button>
+                    )}
                   </div>
                 )}
                 <FilePreviewInput
@@ -1061,15 +1203,22 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
               <div>
                 {userRole === 'company' && project.drawing_mechanical_url && !canUpdateDocument('drawing_mechanical') && (
                   <div className="mb-2 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openRequestUpdateModal('drawing_mechanical')}
-                      className="text-xs"
-                    >
-                      <Send className="w-3 h-3 mr-1" />
-                      Request Update
-                    </Button>
+                    {hasPendingRequest('drawing_mechanical') ? (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
+                        <Clock className="w-3 h-3" />
+                        Request Awaiting Approval
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openRequestUpdateModal('drawing_mechanical')}
+                        className="text-xs"
+                      >
+                        <Send className="w-3 h-3 mr-1" />
+                        Request Update
+                      </Button>
+                    )}
                   </div>
                 )}
                 <FilePreviewInput
@@ -1083,15 +1232,22 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
               <div>
                 {userRole === 'company' && project.drawing_technical_url && !canUpdateDocument('drawing_technical') && (
                   <div className="mb-2 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openRequestUpdateModal('drawing_technical')}
-                      className="text-xs"
-                    >
-                      <Send className="w-3 h-3 mr-1" />
-                      Request Update
-                    </Button>
+                    {hasPendingRequest('drawing_technical') ? (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
+                        <Clock className="w-3 h-3" />
+                        Request Awaiting Approval
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openRequestUpdateModal('drawing_technical')}
+                        className="text-xs"
+                      >
+                        <Send className="w-3 h-3 mr-1" />
+                        Request Update
+                      </Button>
+                    )}
                   </div>
                 )}
                 <FilePreviewInput
@@ -1134,15 +1290,22 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                   <div key={doc.id}>
                     {userRole === 'company' && (
                       <div className="mb-2 flex justify-end">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openRequestUpdateModal('extra_document', doc.id)}
-                          className="text-xs"
-                        >
-                          <Send className="w-3 h-3 mr-1" />
-                          Request Update
-                        </Button>
+                        {hasPendingRequest('extra_document', doc.id) ? (
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
+                            <Clock className="w-3 h-3" />
+                            Request Awaiting Approval
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openRequestUpdateModal('extra_document', doc.id)}
+                            className="text-xs"
+                          >
+                            <Send className="w-3 h-3 mr-1" />
+                            Request Update
+                          </Button>
+                        )}
                       </div>
                     )}
                     <FilePreviewInput
