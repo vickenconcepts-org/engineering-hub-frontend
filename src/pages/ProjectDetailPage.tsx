@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Building2, DollarSign, Calendar, MapPin, CheckCircle, Clock, AlertCircle, X, MessageSquare, FolderKanban, Shield, Image as ImageIcon, Plus } from 'lucide-react';
+import { ArrowLeft, Building2, DollarSign, Calendar, MapPin, CheckCircle, Clock, AlertCircle, X, MessageSquare, FolderKanban, Shield, Image as ImageIcon, Plus, Eye, Lock, Unlock, Send } from 'lucide-react';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Textarea } from '../components/Textarea';
 import { FilePreviewInput } from '../components/FilePreviewInput';
+import { DocumentViewerModal } from '../components/DocumentViewerModal';
 import { projectService, Project } from '../services/project.service';
 import { milestoneService } from '../services/milestone.service';
 import { Milestone } from '../services/project.service';
@@ -39,6 +40,15 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   });
   const [extraUploads, setExtraUploads] = useState<Array<{ id: string; title: string; file: File | null }>>([]);
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false);
+  const [viewerModalOpen, setViewerModalOpen] = useState(false);
+  const [viewerDocumentUrl, setViewerDocumentUrl] = useState<string | null>(null);
+  const [viewerDocumentTitle, setViewerDocumentTitle] = useState<string>('');
+  const [requestUpdateModalOpen, setRequestUpdateModalOpen] = useState(false);
+  const [requestUpdateType, setRequestUpdateType] = useState<string>('');
+  const [requestUpdateExtraDocId, setRequestUpdateExtraDocId] = useState<string | null>(null);
+  const [requestUpdateReason, setRequestUpdateReason] = useState('');
+  const [isRequestingUpdate, setIsRequestingUpdate] = useState(false);
+  const [documentsEnabled, setDocumentsEnabled] = useState(true);
   
   useEffect(() => {
     if (projectId) {
@@ -251,6 +261,55 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
       setMilestoneNotes(milestone.company_notes || '');
     }
     setNotesModalOpen(true);
+  };
+
+  const openDocumentViewer = (url: string, title: string) => {
+    setViewerDocumentUrl(url);
+    setViewerDocumentTitle(title);
+    setViewerModalOpen(true);
+  };
+
+  const openRequestUpdateModal = (documentType: string, extraDocId?: string) => {
+    setRequestUpdateType(documentType);
+    setRequestUpdateExtraDocId(extraDocId || null);
+    setRequestUpdateReason('');
+    setRequestUpdateModalOpen(true);
+  };
+
+  const handleRequestDocumentUpdate = async () => {
+    if (!project) return;
+
+    try {
+      setIsRequestingUpdate(true);
+      await projectService.requestDocumentUpdate(
+        project.id,
+        requestUpdateType,
+        requestUpdateExtraDocId || undefined,
+        requestUpdateReason || undefined
+      );
+      toast.success('Update request submitted successfully. Waiting for client approval.');
+      setRequestUpdateModalOpen(false);
+      setRequestUpdateReason('');
+      await loadProject();
+    } catch (error: any) {
+      console.error('Failed to request document update:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit update request');
+    } finally {
+      setIsRequestingUpdate(false);
+    }
+  };
+
+  const canUpdateDocument = (documentType: string): boolean => {
+    if (!project || userRole !== 'company') return false;
+    
+    // For main documents, check if document exists
+    const mainDocTypes = ['preview_image', 'drawing_architectural', 'drawing_structural', 'drawing_mechanical', 'drawing_technical'];
+    if (mainDocTypes.includes(documentType)) {
+      const fieldName = documentType === 'preview_image' ? 'preview_image_url' : documentType + '_url';
+      return !project[fieldName as keyof Project]; // Can update if document doesn't exist
+    }
+    
+    return true; // For extra documents, can always add new ones
   };
   
   const getMilestoneStatusIcon = (status: string) => {
@@ -901,49 +960,148 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
           </p>
         </div>
         <div className="p-6 space-y-8">
+          {/* Enable/Disable Toggle */}
+          {userRole === 'company' && (
+            <div className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-lg border border-[#E5E7EB]">
+              <div>
+                <p className="text-sm font-semibold text-[#334155]">Document Management</p>
+                <p className="text-xs text-[#64748B]">Enable or disable document uploads</p>
+              </div>
+              <button
+                onClick={() => setDocumentsEnabled(!documentsEnabled)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  documentsEnabled
+                    ? 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#A7F3D0]'
+                    : 'bg-[#FEE2E2] text-[#991B1B] hover:bg-[#FECACA]'
+                }`}
+              >
+                {documentsEnabled ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                <span className="text-sm font-medium">{documentsEnabled ? 'Enabled' : 'Disabled'}</span>
+              </button>
+            </div>
+          )}
+
           <div>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm font-semibold text-[#334155]">Project Preview Image</p>
                 <p className="text-xs text-[#64748B]">Upload the final look of the project.</p>
               </div>
+              {userRole === 'company' && project.preview_image_url && !canUpdateDocument('preview_image') && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openRequestUpdateModal('preview_image')}
+                  className="text-xs"
+                >
+                  <Send className="w-3 h-3 mr-1" />
+                  Request Update
+                </Button>
+              )}
             </div>
             <FilePreviewInput
               label="Project Preview"
               value={previewImageFile || project.preview_image_url || null}
               onChange={setPreviewImageFile}
               accept="image/png,image/jpeg,.png,.jpg,.jpeg"
-              disabled={userRole !== 'company'}
+              disabled={userRole !== 'company' || !documentsEnabled}
+              onView={() => project.preview_image_url && openDocumentViewer(project.preview_image_url, 'Project Preview Image')}
             />
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-[#334155] mb-3">Required Drawings</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-[#334155]">Required Drawings</p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FilePreviewInput
-                label="Architectural Drawing"
-                value={drawingFiles.architectural || project.drawing_architectural_url || null}
-                onChange={(file) => setDrawingFiles((prev) => ({ ...prev, architectural: file }))}
-                disabled={userRole !== 'company'}
-              />
-              <FilePreviewInput
-                label="Structural Drawing"
-                value={drawingFiles.structural || project.drawing_structural_url || null}
-                onChange={(file) => setDrawingFiles((prev) => ({ ...prev, structural: file }))}
-                disabled={userRole !== 'company'}
-              />
-              <FilePreviewInput
-                label="Mechanical Drawing"
-                value={drawingFiles.mechanical || project.drawing_mechanical_url || null}
-                onChange={(file) => setDrawingFiles((prev) => ({ ...prev, mechanical: file }))}
-                disabled={userRole !== 'company'}
-              />
-              <FilePreviewInput
-                label="Technical Drawing"
-                value={drawingFiles.technical || project.drawing_technical_url || null}
-                onChange={(file) => setDrawingFiles((prev) => ({ ...prev, technical: file }))}
-                disabled={userRole !== 'company'}
-              />
+              <div>
+                {userRole === 'company' && project.drawing_architectural_url && !canUpdateDocument('drawing_architectural') && (
+                  <div className="mb-2 flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openRequestUpdateModal('drawing_architectural')}
+                      className="text-xs"
+                    >
+                      <Send className="w-3 h-3 mr-1" />
+                      Request Update
+                    </Button>
+                  </div>
+                )}
+                <FilePreviewInput
+                  label="Architectural Drawing"
+                  value={drawingFiles.architectural || project.drawing_architectural_url || null}
+                  onChange={(file) => setDrawingFiles((prev) => ({ ...prev, architectural: file }))}
+                  disabled={userRole !== 'company' || !documentsEnabled}
+                  onView={() => project.drawing_architectural_url && openDocumentViewer(project.drawing_architectural_url, 'Architectural Drawing')}
+                />
+              </div>
+              <div>
+                {userRole === 'company' && project.drawing_structural_url && !canUpdateDocument('drawing_structural') && (
+                  <div className="mb-2 flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openRequestUpdateModal('drawing_structural')}
+                      className="text-xs"
+                    >
+                      <Send className="w-3 h-3 mr-1" />
+                      Request Update
+                    </Button>
+                  </div>
+                )}
+                <FilePreviewInput
+                  label="Structural Drawing"
+                  value={drawingFiles.structural || project.drawing_structural_url || null}
+                  onChange={(file) => setDrawingFiles((prev) => ({ ...prev, structural: file }))}
+                  disabled={userRole !== 'company' || !documentsEnabled}
+                  onView={() => project.drawing_structural_url && openDocumentViewer(project.drawing_structural_url, 'Structural Drawing')}
+                />
+              </div>
+              <div>
+                {userRole === 'company' && project.drawing_mechanical_url && !canUpdateDocument('drawing_mechanical') && (
+                  <div className="mb-2 flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openRequestUpdateModal('drawing_mechanical')}
+                      className="text-xs"
+                    >
+                      <Send className="w-3 h-3 mr-1" />
+                      Request Update
+                    </Button>
+                  </div>
+                )}
+                <FilePreviewInput
+                  label="Mechanical Drawing"
+                  value={drawingFiles.mechanical || project.drawing_mechanical_url || null}
+                  onChange={(file) => setDrawingFiles((prev) => ({ ...prev, mechanical: file }))}
+                  disabled={userRole !== 'company' || !documentsEnabled}
+                  onView={() => project.drawing_mechanical_url && openDocumentViewer(project.drawing_mechanical_url, 'Mechanical Drawing')}
+                />
+              </div>
+              <div>
+                {userRole === 'company' && project.drawing_technical_url && !canUpdateDocument('drawing_technical') && (
+                  <div className="mb-2 flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openRequestUpdateModal('drawing_technical')}
+                      className="text-xs"
+                    >
+                      <Send className="w-3 h-3 mr-1" />
+                      Request Update
+                    </Button>
+                  </div>
+                )}
+                <FilePreviewInput
+                  label="Technical Drawing"
+                  value={drawingFiles.technical || project.drawing_technical_url || null}
+                  onChange={(file) => setDrawingFiles((prev) => ({ ...prev, technical: file }))}
+                  disabled={userRole !== 'company' || !documentsEnabled}
+                  onView={() => project.drawing_technical_url && openDocumentViewer(project.drawing_technical_url, 'Technical Drawing')}
+                />
+              </div>
             </div>
           </div>
 
@@ -973,13 +1131,28 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
             {project.documents && project.documents.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 {project.documents.map((doc) => (
-                  <FilePreviewInput
-                    key={doc.id}
-                    label={doc.title}
-                    value={doc.file_url}
-                    onChange={() => {}}
-                    disabled
-                  />
+                  <div key={doc.id}>
+                    {userRole === 'company' && (
+                      <div className="mb-2 flex justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openRequestUpdateModal('extra_document', doc.id)}
+                          className="text-xs"
+                        >
+                          <Send className="w-3 h-3 mr-1" />
+                          Request Update
+                        </Button>
+                      </div>
+                    )}
+                    <FilePreviewInput
+                      label={doc.title}
+                      value={doc.file_url}
+                      onChange={() => {}}
+                      disabled={userRole === 'company' ? !documentsEnabled : true}
+                      onView={() => openDocumentViewer(doc.file_url, doc.title)}
+                    />
+                  </div>
                 ))}
               </div>
             )}
@@ -1000,7 +1173,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                         }
                         placeholder="Document title"
                         className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none text-sm"
-                        disabled={userRole !== 'company'}
+                        disabled={userRole !== 'company' || !documentsEnabled}
                       />
                       {userRole === 'company' && (
                         <button
@@ -1024,7 +1197,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                           )
                         )
                       }
-                      disabled={userRole !== 'company'}
+                      disabled={userRole !== 'company' || !documentsEnabled}
                     />
                   </div>
                 ))}
@@ -1032,7 +1205,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
             )}
           </div>
 
-          {userRole === 'company' && (
+          {userRole === 'company' && documentsEnabled && (
             <div className="flex justify-end">
               <Button
                 onClick={handleUploadDocuments}
@@ -1045,6 +1218,63 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
           )}
         </div>
       </div>
+
+      {/* Document Viewer Modal */}
+      <DocumentViewerModal
+        isOpen={viewerModalOpen}
+        onClose={() => {
+          setViewerModalOpen(false);
+          setViewerDocumentUrl(null);
+          setViewerDocumentTitle('');
+        }}
+        documentUrl={viewerDocumentUrl || ''}
+        documentTitle={viewerDocumentTitle}
+      />
+
+      {/* Request Document Update Modal */}
+      <Modal
+        isOpen={requestUpdateModalOpen}
+        onClose={() => {
+          setRequestUpdateModalOpen(false);
+          setRequestUpdateType('');
+          setRequestUpdateExtraDocId(null);
+          setRequestUpdateReason('');
+        }}
+        title="Request Document Update"
+        primaryAction={{
+          label: isRequestingUpdate ? 'Submitting...' : 'Submit Request',
+          onClick: handleRequestDocumentUpdate,
+          disabled: isRequestingUpdate,
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: () => {
+            setRequestUpdateModalOpen(false);
+            setRequestUpdateType('');
+            setRequestUpdateExtraDocId(null);
+            setRequestUpdateReason('');
+          },
+          disabled: isRequestingUpdate,
+        }}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[#64748B]">
+            You are requesting permission to update this document. The client will need to approve your request before you can upload a new version.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-[#334155] mb-2">
+              Reason (Optional)
+            </label>
+            <textarea
+              value={requestUpdateReason}
+              onChange={(e) => setRequestUpdateReason(e.target.value)}
+              placeholder="Explain why you need to update this document..."
+              rows={4}
+              className="w-full px-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none transition-colors text-sm text-[#334155] placeholder:text-[#64748B] resize-vertical"
+            />
+          </div>
+        </div>
+      </Modal>
 
       {/* Verify Milestone Modal */}
       <Modal

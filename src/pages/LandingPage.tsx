@@ -37,8 +37,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
         </div>
       </header>
       
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-20">
+      {/* Hero Section */      <section className="relative overflow-hidden py-20">
         {/* Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"

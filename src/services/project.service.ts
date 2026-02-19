@@ -263,5 +263,45 @@ export const projectService = {
     );
     return extractData<Project>(response);
   },
+
+  /**
+   * Request permission to update a document (company only)
+   */
+  async requestDocumentUpdate(
+    projectId: string,
+    documentType: string,
+    extraDocumentId?: string,
+    reason?: string
+  ): Promise<any> {
+    const response = await apiClient.post<ApiResponse<any>>(
+      `/company/projects/${projectId}/document-update-request`,
+      {
+        document_type: documentType,
+        extra_document_id: extraDocumentId,
+        reason,
+      }
+    );
+    return extractData<any>(response);
+  },
+
+  /**
+   * Grant a document update request (client only)
+   */
+  async grantDocumentUpdate(requestId: string): Promise<any> {
+    const response = await apiClient.post<ApiResponse<any>>(
+      `/client/document-update-requests/${requestId}/grant`
+    );
+    return extractData<any>(response);
+  },
+
+  /**
+   * Deny a document update request (client only)
+   */
+  async denyDocumentUpdate(requestId: string): Promise<any> {
+    const response = await apiClient.post<ApiResponse<any>>(
+      `/client/document-update-requests/${requestId}/deny`
+    );
+    return extractData<any>(response);
+  },
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, FileText, Image } from 'lucide-react';
+import { Upload, X, FileText, Image, Eye } from 'lucide-react';
 
 interface FilePreviewInputProps {
   label: string;
@@ -8,6 +8,7 @@ interface FilePreviewInputProps {
   accept?: string;
   disabled?: boolean;
   error?: string;
+  onView?: () => void; // Callback for view button
 }
 
 export function FilePreviewInput({
@@ -17,6 +18,7 @@ export function FilePreviewInput({
   accept = 'application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png',
   disabled = false,
   error,
+  onView,
 }: FilePreviewInputProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -145,12 +147,29 @@ export function FilePreviewInput({
         {(previewUrl || (value instanceof File && isPdf)) ? (
           <div className="relative p-4">
             {isImage ? (
-              <div className="relative">
+              <div className="relative group">
                 <img
                   src={previewUrl}
                   alt="Preview"
                   className="w-full h-48 object-contain rounded"
                 />
+                {previewUrl && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onView) {
+                        onView();
+                      } else {
+                        window.open(previewUrl, '_blank');
+                      }
+                    }}
+                    className="absolute top-2 left-2 bg-white/90 hover:bg-white text-[#1E3A8A] rounded-lg px-2 py-1.5 text-xs font-medium flex items-center gap-1.5 shadow-md transition-all opacity-0 group-hover:opacity-100"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    View
+                  </button>
+                )}
                 {!disabled && (
                   <button
                     type="button"
@@ -174,15 +193,23 @@ export function FilePreviewInput({
                 {value instanceof File && (
                   <p className="text-xs text-[#64748B] mb-2">{value.name}</p>
                 )}
-                <a
-                  href={pdfUrl || previewUrl || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-xs text-[#1E3A8A] hover:underline"
-                >
-                  View Document
-                </a>
+                {(previewUrl || pdfUrl) && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onView) {
+                        onView();
+                      } else {
+                        window.open(pdfUrl || previewUrl || '#', '_blank');
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1E3A8A] bg-[#EFF6FF] hover:bg-[#DBEAFE] rounded-lg transition-colors mb-2"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    View Document
+                  </button>
+                )}
                 {!disabled && (
                   <button
                     type="button"
