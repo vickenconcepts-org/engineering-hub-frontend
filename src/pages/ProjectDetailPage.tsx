@@ -51,10 +51,21 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   const [documentsEnabled, setDocumentsEnabled] = useState(true);
   
   useEffect(() => {
+    console.log('🔄 useEffect triggered:', { projectId, userRole });
     if (projectId) {
+      console.log('📥 Loading project...');
       loadProject();
     }
   }, [projectId, userRole]);
+
+  useEffect(() => {
+    console.log('📊 Project state changed:', {
+      hasProject: !!project,
+      projectId: project?.id,
+      documentUpdateRequestsCount: project?.documentUpdateRequests?.length || 0,
+      documentUpdateRequests: project?.documentUpdateRequests
+    });
+  }, [project]);
 
   useEffect(() => {
     if (previewImageFile) {
@@ -79,12 +90,15 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
         fetchedProject = await projectService.get(projectId);
       }
       // Debug: Log document update requests
-      console.log('Loaded project with documentUpdateRequests:', {
+      console.log('📥 Loaded project:', {
+        projectId: fetchedProject.id,
         hasRequests: !!fetchedProject.documentUpdateRequests,
         count: fetchedProject.documentUpdateRequests?.length || 0,
-        requests: fetchedProject.documentUpdateRequests
+        requests: fetchedProject.documentUpdateRequests,
+        fullProject: fetchedProject
       });
       setProject(fetchedProject);
+      console.log('✅ Project state updated');
       setPreviewImageFile(null);
       setDrawingFiles({
         architectural: null,
@@ -283,22 +297,35 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   };
 
   const handleRequestDocumentUpdate = async () => {
-    if (!project) return;
+    if (!project) {
+      console.log('❌ No project in handleRequestDocumentUpdate');
+      return;
+    }
+
+    console.log('📤 Sending document update request:', {
+      projectId: project.id,
+      documentType: requestUpdateType,
+      extraDocId: requestUpdateExtraDocId,
+      reason: requestUpdateReason
+    });
 
     try {
       setIsRequestingUpdate(true);
-      await projectService.requestDocumentUpdate(
+      const response = await projectService.requestDocumentUpdate(
         project.id,
         requestUpdateType,
         requestUpdateExtraDocId || undefined,
         requestUpdateReason || undefined
       );
+      console.log('✅ Request sent successfully:', response);
       toast.success('Update request submitted successfully. Waiting for client approval.');
       setRequestUpdateModalOpen(false);
       setRequestUpdateReason('');
+      console.log('🔄 Reloading project...');
       await loadProject();
+      console.log('✅ Project reloaded');
     } catch (error: any) {
-      console.error('Failed to request document update:', error);
+      console.error('❌ Failed to request document update:', error);
       toast.error(error.response?.data?.message || 'Failed to submit update request');
     } finally {
       setIsRequestingUpdate(false);
@@ -319,9 +346,26 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   };
 
   const hasPendingRequest = (documentType: string, extraDocId?: string): any => {
-    if (!project?.documentUpdateRequests || !Array.isArray(project.documentUpdateRequests)) {
+    console.log('🔍 hasPendingRequest called:', { documentType, extraDocId, hasProject: !!project });
+    
+    if (!project) {
+      console.log('❌ No project found');
       return null;
     }
+    
+    console.log('📋 Project documentUpdateRequests:', {
+      exists: !!project.documentUpdateRequests,
+      isArray: Array.isArray(project.documentUpdateRequests),
+      length: project.documentUpdateRequests?.length || 0,
+      data: project.documentUpdateRequests
+    });
+    
+    if (!project.documentUpdateRequests || !Array.isArray(project.documentUpdateRequests)) {
+      console.log('❌ documentUpdateRequests is not an array or doesn\'t exist');
+      return null;
+    }
+    
+    console.log('🔎 Searching through', project.documentUpdateRequests.length, 'requests');
     
     const found = project.documentUpdateRequests.find((req: any) => {
       const typeMatch = req.document_type === documentType;
@@ -330,21 +374,54 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
         ? req.extra_document_id === extraDocId 
         : !req.extra_document_id;
       
+      console.log('🔍 Checking request:', {
+        reqId: req.id,
+        reqDocumentType: req.document_type,
+        reqStatus: req.status,
+        reqExtraDocId: req.extra_document_id,
+        typeMatch,
+        statusMatch,
+        extraDocMatch,
+        lookingFor: { documentType, extraDocId }
+      });
+      
       const matches = typeMatch && statusMatch && extraDocMatch;
       if (matches) {
-        console.log('Found pending request:', { documentType, extraDocId, request: req });
+        console.log('✅ Found pending request:', { documentType, extraDocId, request: req });
       }
       return matches;
     });
+    
+    if (found) {
+      console.log('✅ hasPendingRequest returning:', found);
+    } else {
+      console.log('❌ No matching pending request found');
+    }
     
     return found || null;
   };
 
   const getDocumentUpdateRequests = (): any[] => {
+    console.log('📋 getDocumentUpdateRequests called:', {
+      hasProject: !!project,
+      hasRequests: !!project?.documentUpdateRequests,
+      isArray: Array.isArray(project?.documentUpdateRequests),
+      allRequests: project?.documentUpdateRequests
+    });
+    
     if (!project?.documentUpdateRequests || !Array.isArray(project.documentUpdateRequests)) {
+      console.log('❌ No documentUpdateRequests found or not an array');
       return [];
     }
-    return project.documentUpdateRequests.filter((req: any) => req.status === 'pending');
+    
+    const pending = project.documentUpdateRequests.filter((req: any) => {
+      const isPending = req.status === 'pending';
+      console.log('🔍 Request status check:', { reqId: req.id, status: req.status, isPending });
+      return isPending;
+    });
+    
+    console.log('✅ Found', pending.length, 'pending requests:', pending);
+    return pending;
   };
 
   const handleGrantDocumentUpdate = async (requestId: string) => {
@@ -1004,7 +1081,15 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
       )}
 
       {/* Document Update Requests - Client Side */}
-      {userRole === 'client' && getDocumentUpdateRequests().length > 0 && (
+      {(() => {
+        const requests = getDocumentUpdateRequests();
+        console.log('🎨 Rendering client document requests section:', {
+          userRole,
+          isClient: userRole === 'client',
+          requestsCount: requests.length,
+          requests
+        });
+        return userRole === 'client' && requests.length > 0 && (
         <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
           <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
             <div className="flex items-center gap-2">
@@ -1083,7 +1168,8 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
             })}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Project Files */}
       <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
@@ -1128,22 +1214,29 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
               </div>
               {userRole === 'company' && project.preview_image_url && !canUpdateDocument('preview_image') && (
                 <div className="flex justify-end">
-                  {hasPendingRequest('preview_image') ? (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
-                      <Clock className="w-3 h-3" />
-                      Request Awaiting Approval
-                    </div>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openRequestUpdateModal('preview_image')}
-                      className="text-xs"
-                    >
-                      <Send className="w-3 h-3 mr-1" />
-                      Request Update
-                    </Button>
-                  )}
+                  {(() => {
+                    const pending = hasPendingRequest('preview_image');
+                    console.log('🎨 Rendering preview_image button area:', {
+                      hasPending: !!pending,
+                      pending
+                    });
+                    return pending ? (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
+                        <Clock className="w-3 h-3" />
+                        Request Awaiting Approval
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openRequestUpdateModal('preview_image')}
+                        className="text-xs"
+                      >
+                        <Send className="w-3 h-3 mr-1" />
+                        Request Update
+                      </Button>
+                    );
+                  })()}
                 </div>
               )}
             </div>
