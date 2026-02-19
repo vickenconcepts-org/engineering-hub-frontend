@@ -1089,7 +1089,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                         </p>
                       )}
                       <p className="text-xs text-[#64748B]">
-                        Requested by: {request.requested_by?.name || 'Company'}
+                        Requested by: {request.company?.company_name || request.requested_by?.name || 'Company'}
                       </p>
                     </div>
                     <div className="flex gap-2">

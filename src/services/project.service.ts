@@ -99,6 +99,10 @@ export interface Project {
       name: string;
       email: string;
     };
+    company?: {
+      id: string;
+      company_name: string;
+    };
     status: 'pending' | 'granted' | 'denied';
     reason?: string;
     granted_at?: string;
