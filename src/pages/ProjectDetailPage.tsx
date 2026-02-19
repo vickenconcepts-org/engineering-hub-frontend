@@ -51,21 +51,10 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   const [documentsEnabled, setDocumentsEnabled] = useState(true);
   
   useEffect(() => {
-    console.log('🔄 useEffect triggered:', { projectId, userRole });
     if (projectId) {
-      console.log('📥 Loading project...');
       loadProject();
     }
   }, [projectId, userRole]);
-
-  useEffect(() => {
-    console.log('📊 Project state changed:', {
-      hasProject: !!project,
-      projectId: project?.id,
-      documentUpdateRequestsCount: project?.documentUpdateRequests?.length || 0,
-      documentUpdateRequests: project?.documentUpdateRequests
-    });
-  }, [project]);
 
   useEffect(() => {
     if (previewImageFile) {
@@ -89,16 +78,23 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
       } else {
         fetchedProject = await projectService.get(projectId);
       }
+      // Normalize document_update_requests (snake_case) to documentUpdateRequests (camelCase)
+      if ((fetchedProject as any).document_update_requests && !fetchedProject.documentUpdateRequests) {
+        fetchedProject.documentUpdateRequests = (fetchedProject as any).document_update_requests;
+      }
+      
       // Debug: Log document update requests
       console.log('📥 Loaded project:', {
         projectId: fetchedProject.id,
         hasRequests: !!fetchedProject.documentUpdateRequests,
         count: fetchedProject.documentUpdateRequests?.length || 0,
         requests: fetchedProject.documentUpdateRequests,
-        fullProject: fetchedProject
+        snakeCaseExists: !!(fetchedProject as any).document_update_requests,
+        snakeCaseCount: (fetchedProject as any).document_update_requests?.length || 0
       });
+      
       setProject(fetchedProject);
-      console.log('✅ Project state updated');
+      console.log('✅ Project state updated with documentUpdateRequests:', fetchedProject.documentUpdateRequests?.length || 0);
       setPreviewImageFile(null);
       setDrawingFiles({
         architectural: null,
@@ -346,82 +342,43 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   };
 
   const hasPendingRequest = (documentType: string, extraDocId?: string): any => {
-    console.log('🔍 hasPendingRequest called:', { documentType, extraDocId, hasProject: !!project });
-    
     if (!project) {
-      console.log('❌ No project found');
       return null;
     }
     
-    console.log('📋 Project documentUpdateRequests:', {
-      exists: !!project.documentUpdateRequests,
-      isArray: Array.isArray(project.documentUpdateRequests),
-      length: project.documentUpdateRequests?.length || 0,
-      data: project.documentUpdateRequests
-    });
+    // Check both camelCase and snake_case property names
+    const requests = project.documentUpdateRequests || (project as any).document_update_requests;
     
-    if (!project.documentUpdateRequests || !Array.isArray(project.documentUpdateRequests)) {
-      console.log('❌ documentUpdateRequests is not an array or doesn\'t exist');
+    if (!requests || !Array.isArray(requests)) {
       return null;
     }
     
-    console.log('🔎 Searching through', project.documentUpdateRequests.length, 'requests');
-    
-    const found = project.documentUpdateRequests.find((req: any) => {
+    const found = requests.find((req: any) => {
       const typeMatch = req.document_type === documentType;
       const statusMatch = req.status === 'pending';
       const extraDocMatch = extraDocId 
         ? req.extra_document_id === extraDocId 
         : !req.extra_document_id;
       
-      console.log('🔍 Checking request:', {
-        reqId: req.id,
-        reqDocumentType: req.document_type,
-        reqStatus: req.status,
-        reqExtraDocId: req.extra_document_id,
-        typeMatch,
-        statusMatch,
-        extraDocMatch,
-        lookingFor: { documentType, extraDocId }
-      });
-      
-      const matches = typeMatch && statusMatch && extraDocMatch;
-      if (matches) {
-        console.log('✅ Found pending request:', { documentType, extraDocId, request: req });
-      }
-      return matches;
+      return typeMatch && statusMatch && extraDocMatch;
     });
-    
-    if (found) {
-      console.log('✅ hasPendingRequest returning:', found);
-    } else {
-      console.log('❌ No matching pending request found');
-    }
     
     return found || null;
   };
 
   const getDocumentUpdateRequests = (): any[] => {
-    console.log('📋 getDocumentUpdateRequests called:', {
-      hasProject: !!project,
-      hasRequests: !!project?.documentUpdateRequests,
-      isArray: Array.isArray(project?.documentUpdateRequests),
-      allRequests: project?.documentUpdateRequests
-    });
-    
-    if (!project?.documentUpdateRequests || !Array.isArray(project.documentUpdateRequests)) {
-      console.log('❌ No documentUpdateRequests found or not an array');
+    if (!project) {
       return [];
     }
     
-    const pending = project.documentUpdateRequests.filter((req: any) => {
-      const isPending = req.status === 'pending';
-      console.log('🔍 Request status check:', { reqId: req.id, status: req.status, isPending });
-      return isPending;
-    });
+    // Check both camelCase and snake_case property names
+    const requests = project.documentUpdateRequests || (project as any).document_update_requests;
     
-    console.log('✅ Found', pending.length, 'pending requests:', pending);
-    return pending;
+    if (!requests || !Array.isArray(requests)) {
+      return [];
+    }
+    
+    return requests.filter((req: any) => req.status === 'pending');
   };
 
   const handleGrantDocumentUpdate = async (requestId: string) => {
@@ -1081,15 +1038,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
       )}
 
       {/* Document Update Requests - Client Side */}
-      {(() => {
-        const requests = getDocumentUpdateRequests();
-        console.log('🎨 Rendering client document requests section:', {
-          userRole,
-          isClient: userRole === 'client',
-          requestsCount: requests.length,
-          requests
-        });
-        return userRole === 'client' && requests.length > 0 && (
+      {userRole === 'client' && getDocumentUpdateRequests().length > 0 && (
         <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
           <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
             <div className="flex items-center gap-2">
@@ -1168,8 +1117,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
             })}
           </div>
         </div>
-        );
-      })()}
+      )}
 
       {/* Project Files */}
       <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg">
@@ -1214,29 +1162,22 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
               </div>
               {userRole === 'company' && project.preview_image_url && !canUpdateDocument('preview_image') && (
                 <div className="flex justify-end">
-                  {(() => {
-                    const pending = hasPendingRequest('preview_image');
-                    console.log('🎨 Rendering preview_image button area:', {
-                      hasPending: !!pending,
-                      pending
-                    });
-                    return pending ? (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
-                        <Clock className="w-3 h-3" />
-                        Request Awaiting Approval
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openRequestUpdateModal('preview_image')}
-                        className="text-xs"
-                      >
-                        <Send className="w-3 h-3 mr-1" />
-                        Request Update
-                      </Button>
-                    );
-                  })()}
+                  {hasPendingRequest('preview_image') ? (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
+                      <Clock className="w-3 h-3" />
+                      Request Awaiting Approval
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openRequestUpdateModal('preview_image')}
+                      className="text-xs"
+                    >
+                      <Send className="w-3 h-3 mr-1" />
+                      Request Update
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
