@@ -133,15 +133,20 @@ export interface CreateProjectData {
 }
 
 export interface UploadProjectDocumentsData {
-  preview_image?: File;
-  drawing_architectural?: File;
-  drawing_structural?: File;
-  drawing_mechanical?: File;
-  drawing_technical?: File;
+  preview_image?: File | null;
+  drawing_architectural?: File | null;
+  drawing_structural?: File | null;
+  drawing_mechanical?: File | null;
+  drawing_technical?: File | null;
   extra_documents?: Array<{
     title: string;
     file: File;
   }>;
+  remove_preview_image?: boolean;
+  remove_drawing_architectural?: boolean;
+  remove_drawing_structural?: boolean;
+  remove_drawing_mechanical?: boolean;
+  remove_drawing_technical?: boolean;
 }
 
 /**
@@ -260,18 +265,32 @@ export const projectService = {
 
     if (data.preview_image) {
       formData.append('preview_image', data.preview_image);
+    } else if (data.remove_preview_image) {
+      formData.append('remove_preview_image', '1');
     }
+    
     if (data.drawing_architectural) {
       formData.append('drawing_architectural', data.drawing_architectural);
+    } else if (data.remove_drawing_architectural) {
+      formData.append('remove_drawing_architectural', '1');
     }
+    
     if (data.drawing_structural) {
       formData.append('drawing_structural', data.drawing_structural);
+    } else if (data.remove_drawing_structural) {
+      formData.append('remove_drawing_structural', '1');
     }
+    
     if (data.drawing_mechanical) {
       formData.append('drawing_mechanical', data.drawing_mechanical);
+    } else if (data.remove_drawing_mechanical) {
+      formData.append('remove_drawing_mechanical', '1');
     }
+    
     if (data.drawing_technical) {
       formData.append('drawing_technical', data.drawing_technical);
+    } else if (data.remove_drawing_technical) {
+      formData.append('remove_drawing_technical', '1');
     }
 
     if (data.extra_documents && data.extra_documents.length > 0) {

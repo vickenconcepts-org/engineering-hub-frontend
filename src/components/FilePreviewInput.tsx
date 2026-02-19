@@ -9,6 +9,7 @@ interface FilePreviewInputProps {
   disabled?: boolean;
   error?: string;
   onView?: () => void; // Callback for view button
+  allowRemove?: boolean; // Allow remove even when disabled (for granted update requests)
 }
 
 export function FilePreviewInput({
@@ -19,6 +20,7 @@ export function FilePreviewInput({
   disabled = false,
   error,
   onView,
+  allowRemove = false,
 }: FilePreviewInputProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -170,7 +172,7 @@ export function FilePreviewInput({
                     View
                   </button>
                 )}
-                {!disabled && (
+                {(!disabled || allowRemove) && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -210,7 +212,7 @@ export function FilePreviewInput({
                     View Document
                   </button>
                 )}
-                {!disabled && (
+                {(!disabled || allowRemove) && (
                   <button
                     type="button"
                     onClick={(e) => {

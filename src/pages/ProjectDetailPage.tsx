@@ -49,6 +49,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   const [requestUpdateReason, setRequestUpdateReason] = useState('');
   const [isRequestingUpdate, setIsRequestingUpdate] = useState(false);
   const [documentsEnabled, setDocumentsEnabled] = useState(true);
+  const [removedDocuments, setRemovedDocuments] = useState<Set<string>>(new Set());
   
   useEffect(() => {
     if (projectId) {
@@ -103,6 +104,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
         technical: null,
       });
       setExtraUploads([]);
+      setRemovedDocuments(new Set()); // Clear removals when project reloads
     } catch (error) {
       console.error('Failed to load project:', error);
       toast.error('Failed to load project details');
@@ -147,11 +149,12 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
   const handleUploadDocuments = async () => {
     if (!project || userRole !== 'company') return;
 
+    // Check if required documents are missing (excluding those that were removed with granted permission)
     const missingRequired = [
-      !project.drawing_architectural_url && !drawingFiles.architectural,
-      !project.drawing_structural_url && !drawingFiles.structural,
-      !project.drawing_mechanical_url && !drawingFiles.mechanical,
-      !project.drawing_technical_url && !drawingFiles.technical,
+      !project.drawing_architectural_url && !drawingFiles.architectural && !removedDocuments.has('drawing_architectural'),
+      !project.drawing_structural_url && !drawingFiles.structural && !removedDocuments.has('drawing_structural'),
+      !project.drawing_mechanical_url && !drawingFiles.mechanical && !removedDocuments.has('drawing_mechanical'),
+      !project.drawing_technical_url && !drawingFiles.technical && !removedDocuments.has('drawing_technical'),
     ].some(Boolean);
 
     if (missingRequired) {
@@ -165,22 +168,47 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
         .filter((item) => item.title.trim() && item.file)
         .map((item) => ({ title: item.title.trim(), file: item.file as File }));
 
-      await projectService.uploadDocuments(project.id, {
-        preview_image: previewImageFile || undefined,
-        drawing_architectural: drawingFiles.architectural || undefined,
-        drawing_structural: drawingFiles.structural || undefined,
-        drawing_mechanical: drawingFiles.mechanical || undefined,
-        drawing_technical: drawingFiles.technical || undefined,
+      // Prepare document data - include removals
+      const documentData: any = {
+        preview_image: removedDocuments.has('preview_image') ? null : (previewImageFile || undefined),
+        drawing_architectural: removedDocuments.has('drawing_architectural') ? null : (drawingFiles.architectural || undefined),
+        drawing_structural: removedDocuments.has('drawing_structural') ? null : (drawingFiles.structural || undefined),
+        drawing_mechanical: removedDocuments.has('drawing_mechanical') ? null : (drawingFiles.mechanical || undefined),
+        drawing_technical: removedDocuments.has('drawing_technical') ? null : (drawingFiles.technical || undefined),
         extra_documents: extraDocuments.length > 0 ? extraDocuments : undefined,
-      });
+        remove_preview_image: removedDocuments.has('preview_image'),
+        remove_drawing_architectural: removedDocuments.has('drawing_architectural'),
+        remove_drawing_structural: removedDocuments.has('drawing_structural'),
+        remove_drawing_mechanical: removedDocuments.has('drawing_mechanical'),
+        remove_drawing_technical: removedDocuments.has('drawing_technical'),
+      };
+
+      await projectService.uploadDocuments(project.id, documentData);
 
       toast.success('Project documents updated successfully.');
+      setRemovedDocuments(new Set()); // Clear removals after successful upload
       await loadProject();
     } catch (error: any) {
       console.error('Failed to upload project documents:', error);
       toast.error(error.response?.data?.message || 'Failed to upload documents');
     } finally {
       setIsUploadingDocuments(false);
+    }
+  };
+
+  const handleRemoveDocument = (documentType: string) => {
+    if (!canRemoveDocument(documentType)) {
+      toast.error('You need approval to remove this document. Please request an update first.');
+      return;
+    }
+    
+    setRemovedDocuments((prev) => new Set(prev).add(documentType));
+    
+    // Clear the file from state
+    if (documentType === 'preview_image') {
+      setPreviewImageFile(null);
+    } else {
+      setDrawingFiles((prev) => ({ ...prev, [documentType]: null }));
     }
   };
   
@@ -364,6 +392,37 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
     });
     
     return found || null;
+  };
+
+  const hasGrantedRequest = (documentType: string, extraDocId?: string): any => {
+    if (!project) {
+      return null;
+    }
+    
+    // Check both camelCase and snake_case property names
+    const requests = project.documentUpdateRequests || (project as any).document_update_requests;
+    
+    if (!requests || !Array.isArray(requests)) {
+      return null;
+    }
+    
+    const found = requests.find((req: any) => {
+      const typeMatch = req.document_type === documentType;
+      const statusMatch = req.status === 'granted';
+      const extraDocMatch = extraDocId 
+        ? req.extra_document_id === extraDocId 
+        : !req.extra_document_id;
+      
+      return typeMatch && statusMatch && extraDocMatch;
+    });
+    
+    return found || null;
+  };
+
+  const canRemoveDocument = (documentType: string, extraDocId?: string): boolean => {
+    if (userRole !== 'company') return false;
+    // Can remove if there's a granted request
+    return !!hasGrantedRequest(documentType, extraDocId);
   };
 
   const getDocumentUpdateRequests = (): any[] => {
@@ -1167,6 +1226,11 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                       <Clock className="w-3 h-3" />
                       Request Awaiting Approval
                     </div>
+                  ) : hasGrantedRequest('preview_image') ? (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D1FAE5] text-[#065F46] text-xs font-medium border border-[#A7F3D0]">
+                      <CheckCircle className="w-3 h-3" />
+                      Request Approved - You can now update
+                    </div>
                   ) : (
                     <Button
                       size="sm"
@@ -1184,9 +1248,21 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
             <FilePreviewInput
               label="Project Preview"
               value={previewImageFile || project.preview_image_url || null}
-              onChange={setPreviewImageFile}
+              onChange={(file) => {
+                if (file === null && project.preview_image_url && canRemoveDocument('preview_image')) {
+                  handleRemoveDocument('preview_image');
+                } else {
+                  setPreviewImageFile(file);
+                  setRemovedDocuments((prev) => {
+                    const next = new Set(prev);
+                    next.delete('preview_image');
+                    return next;
+                  });
+                }
+              }}
               accept="image/png,image/jpeg,.png,.jpg,.jpeg"
-              disabled={userRole !== 'company' || !documentsEnabled}
+              disabled={userRole !== 'company' || (!documentsEnabled && !canRemoveDocument('preview_image'))}
+              allowRemove={canRemoveDocument('preview_image')}
               onView={() => project.preview_image_url && openDocumentViewer(project.preview_image_url, 'Project Preview Image')}
             />
           </div>
@@ -1204,6 +1280,11 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                         <Clock className="w-3 h-3" />
                         Request Awaiting Approval
                       </div>
+                    ) : hasGrantedRequest('drawing_architectural') ? (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D1FAE5] text-[#065F46] text-xs font-medium border border-[#A7F3D0]">
+                        <CheckCircle className="w-3 h-3" />
+                        Request Approved - You can now update
+                      </div>
                     ) : (
                       <Button
                         size="sm"
@@ -1220,8 +1301,20 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                 <FilePreviewInput
                   label="Architectural Drawing"
                   value={drawingFiles.architectural || project.drawing_architectural_url || null}
-                  onChange={(file) => setDrawingFiles((prev) => ({ ...prev, architectural: file }))}
-                  disabled={userRole !== 'company' || !documentsEnabled}
+                  onChange={(file) => {
+                    if (file === null && project.drawing_architectural_url && canRemoveDocument('drawing_architectural')) {
+                      handleRemoveDocument('drawing_architectural');
+                    } else {
+                      setDrawingFiles((prev) => ({ ...prev, architectural: file }));
+                      setRemovedDocuments((prev) => {
+                        const next = new Set(prev);
+                        next.delete('drawing_architectural');
+                        return next;
+                      });
+                    }
+                  }}
+                  disabled={userRole !== 'company' || (!documentsEnabled && !canRemoveDocument('drawing_architectural'))}
+                  allowRemove={canRemoveDocument('drawing_architectural')}
                   onView={() => project.drawing_architectural_url && openDocumentViewer(project.drawing_architectural_url, 'Architectural Drawing')}
                 />
               </div>
@@ -1232,6 +1325,11 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
                         <Clock className="w-3 h-3" />
                         Request Awaiting Approval
+                      </div>
+                    ) : hasGrantedRequest('drawing_structural') ? (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D1FAE5] text-[#065F46] text-xs font-medium border border-[#A7F3D0]">
+                        <CheckCircle className="w-3 h-3" />
+                        Request Approved - You can now update
                       </div>
                     ) : (
                       <Button
@@ -1249,8 +1347,20 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                 <FilePreviewInput
                   label="Structural Drawing"
                   value={drawingFiles.structural || project.drawing_structural_url || null}
-                  onChange={(file) => setDrawingFiles((prev) => ({ ...prev, structural: file }))}
-                  disabled={userRole !== 'company' || !documentsEnabled}
+                  onChange={(file) => {
+                    if (file === null && project.drawing_structural_url && canRemoveDocument('drawing_structural')) {
+                      handleRemoveDocument('drawing_structural');
+                    } else {
+                      setDrawingFiles((prev) => ({ ...prev, structural: file }));
+                      setRemovedDocuments((prev) => {
+                        const next = new Set(prev);
+                        next.delete('drawing_structural');
+                        return next;
+                      });
+                    }
+                  }}
+                  disabled={userRole !== 'company' || (!documentsEnabled && !canRemoveDocument('drawing_structural'))}
+                  allowRemove={canRemoveDocument('drawing_structural')}
                   onView={() => project.drawing_structural_url && openDocumentViewer(project.drawing_structural_url, 'Structural Drawing')}
                 />
               </div>
@@ -1261,6 +1371,11 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
                         <Clock className="w-3 h-3" />
                         Request Awaiting Approval
+                      </div>
+                    ) : hasGrantedRequest('drawing_mechanical') ? (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D1FAE5] text-[#065F46] text-xs font-medium border border-[#A7F3D0]">
+                        <CheckCircle className="w-3 h-3" />
+                        Request Approved - You can now update
                       </div>
                     ) : (
                       <Button
@@ -1278,8 +1393,20 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                 <FilePreviewInput
                   label="Mechanical Drawing"
                   value={drawingFiles.mechanical || project.drawing_mechanical_url || null}
-                  onChange={(file) => setDrawingFiles((prev) => ({ ...prev, mechanical: file }))}
-                  disabled={userRole !== 'company' || !documentsEnabled}
+                  onChange={(file) => {
+                    if (file === null && project.drawing_mechanical_url && canRemoveDocument('drawing_mechanical')) {
+                      handleRemoveDocument('drawing_mechanical');
+                    } else {
+                      setDrawingFiles((prev) => ({ ...prev, mechanical: file }));
+                      setRemovedDocuments((prev) => {
+                        const next = new Set(prev);
+                        next.delete('drawing_mechanical');
+                        return next;
+                      });
+                    }
+                  }}
+                  disabled={userRole !== 'company' || (!documentsEnabled && !canRemoveDocument('drawing_mechanical'))}
+                  allowRemove={canRemoveDocument('drawing_mechanical')}
                   onView={() => project.drawing_mechanical_url && openDocumentViewer(project.drawing_mechanical_url, 'Mechanical Drawing')}
                 />
               </div>
@@ -1290,6 +1417,11 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FEF3C7] text-[#92400E] text-xs font-medium border border-[#FCD34D]">
                         <Clock className="w-3 h-3" />
                         Request Awaiting Approval
+                      </div>
+                    ) : hasGrantedRequest('drawing_technical') ? (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D1FAE5] text-[#065F46] text-xs font-medium border border-[#A7F3D0]">
+                        <CheckCircle className="w-3 h-3" />
+                        Request Approved - You can now update
                       </div>
                     ) : (
                       <Button
@@ -1307,8 +1439,20 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                 <FilePreviewInput
                   label="Technical Drawing"
                   value={drawingFiles.technical || project.drawing_technical_url || null}
-                  onChange={(file) => setDrawingFiles((prev) => ({ ...prev, technical: file }))}
-                  disabled={userRole !== 'company' || !documentsEnabled}
+                  onChange={(file) => {
+                    if (file === null && project.drawing_technical_url && canRemoveDocument('drawing_technical')) {
+                      handleRemoveDocument('drawing_technical');
+                    } else {
+                      setDrawingFiles((prev) => ({ ...prev, technical: file }));
+                      setRemovedDocuments((prev) => {
+                        const next = new Set(prev);
+                        next.delete('drawing_technical');
+                        return next;
+                      });
+                    }
+                  }}
+                  disabled={userRole !== 'company' || (!documentsEnabled && !canRemoveDocument('drawing_technical'))}
+                  allowRemove={canRemoveDocument('drawing_technical')}
                   onView={() => project.drawing_technical_url && openDocumentViewer(project.drawing_technical_url, 'Technical Drawing')}
                 />
               </div>
@@ -1349,6 +1493,11 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                             <Clock className="w-3 h-3" />
                             Request Awaiting Approval
                           </div>
+                        ) : hasGrantedRequest('extra_document', doc.id) ? (
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D1FAE5] text-[#065F46] text-xs font-medium border border-[#A7F3D0]">
+                            <CheckCircle className="w-3 h-3" />
+                            Request Approved - You can now update
+                          </div>
                         ) : (
                           <Button
                             size="sm"
@@ -1366,7 +1515,8 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                       label={doc.title}
                       value={doc.file_url}
                       onChange={() => {}}
-                      disabled={userRole === 'company' ? !documentsEnabled : true}
+                      disabled={userRole === 'company' ? (!documentsEnabled && !canRemoveDocument('extra_document', doc.id)) : true}
+                      allowRemove={canRemoveDocument('extra_document', doc.id)}
                       onView={() => openDocumentViewer(doc.file_url, doc.title)}
                     />
                   </div>
