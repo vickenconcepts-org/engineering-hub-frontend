@@ -527,100 +527,76 @@ export function ConsultationsPage({ userRole }: ConsultationsPageProps) {
                   </div>
                 </div>
               ) : (
-                <div className="grid gap-6">
-                  {companies.map((company) => (
-                    <div key={company.id} className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6 hover:shadow-xl transition-shadow">
-                      <div className="flex flex-col md:flex-row gap-6">
-                        {/* Company Info */}
-                        <div className="flex-1">
-                          <div className="flex items-start gap-4 mb-4">
-                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] flex items-center justify-center flex-shrink-0">
-                              <Building2 className="w-6 h-6 text-white" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="text-lg font-semibold text-[#334155]">
-                                  {company.company_name}
-                                </h3>
+                <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-[#F8FAFC] text-[#64748B]">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-medium">Company</th>
+                          <th className="px-4 py-3 text-left font-medium">Registration</th>
+                          <th className="px-4 py-3 text-left font-medium">Portfolio</th>
+                          <th className="px-4 py-3 text-left font-medium">Consultation Fee</th>
+                          <th className="px-4 py-3 text-left font-medium">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#E5E7EB]">
+                        {companies.map((company) => (
+                          <tr key={company.id} className="hover:bg-[#F8FAFC]">
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-[#334155]">
+                                {company.company_name}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                 {company.is_verified && (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#DBEAFE] text-[#1E40AF] border border-[#BFDBFE]">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#DBEAFE] text-[#1E40AF] border border-[#BFDBFE]">
                                     ✓ Verified
                                   </span>
                                 )}
+                                {company.specialization && company.specialization.length > 0 && (
+                                  <>
+                                    {company.specialization.slice(0, 2).map((spec, idx) => (
+                                      <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-[#F8FAFC] text-[#64748B] border border-[#E5E7EB]">
+                                        {spec}
+                                      </span>
+                                    ))}
+                                    {company.specialization.length > 2 && (
+                                      <span className="text-xs text-[#64748B]">+{company.specialization.length - 2}</span>
+                                    )}
+                                  </>
+                                )}
                               </div>
-                              {company.specialization && company.specialization.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mb-3">
-                                  {company.specialization.slice(0, 3).map((spec, idx) => (
-                                    <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-[#F8FAFC] text-[#64748B] border border-[#E5E7EB]">
-                                      {spec}
-                                    </span>
-                                  ))}
-                                  {company.specialization.length > 3 && (
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium text-[#64748B]">
-                                      +{company.specialization.length - 3} more
-                                    </span>
-                                  )}
-                                </div>
+                            </td>
+                            <td className="px-4 py-3 text-[#334155] whitespace-nowrap">
+                              {company.registration_number || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-[#334155] whitespace-nowrap">
+                              {company.portfolio_links && company.portfolio_links.length > 0 ? 'Available' : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-[#334155] whitespace-nowrap">
+                              {((company as any).consultation_fee && (company as any).consultation_fee > 0) ? (
+                                <span className="font-semibold text-[#1E3A8A]">
+                                  ₦{(company as any).consultation_fee.toLocaleString()}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-[#F59E0B] font-medium">Not set</span>
                               )}
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {company.registration_number && (
-                              <div className="flex items-center gap-2 text-sm text-[#64748B]">
-                                <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
-                                  <Building2 className="w-4 h-4 text-[#1E3A8A]" />
-                                </div>
-                                <div>
-                                  <p className="text-xs text-[#64748B]">Registration</p>
-                                  <p className="font-medium text-[#334155]">{company.registration_number}</p>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {company.portfolio_links && company.portfolio_links.length > 0 && (
-                              <div className="flex items-center gap-2 text-sm text-[#64748B]">
-                                <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] flex items-center justify-center">
-                                  <Building2 className="w-4 h-4 text-[#1E3A8A]" />
-                                </div>
-                                <div>
-                                  <p className="text-xs text-[#64748B]">Portfolio</p>
-                                  <p className="font-medium text-[#334155]">Available</p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Booking Section */}
-                        <div className="md:w-72 flex flex-col justify-between md:border-l md:border-[#E5E7EB] md:pl-6">
-                          <div className="bg-gradient-to-br from-[#1E3A8A]/5 to-[#2563EB]/5 rounded-lg p-4 mb-4">
-                            <p className="text-xs uppercase tracking-wide text-[#64748B] mb-2 font-medium">
-                              Consultation Fee
-                            </p>
-                            <div className="flex items-baseline gap-1">
-                              <p className="text-3xl font-bold text-[#1E3A8A]">
-                                ₦{((company as any).consultation_fee && (company as any).consultation_fee > 0 
-                                  ? (company as any).consultation_fee 
-                                  : 0).toLocaleString()}
-                              </p>
-                            </div>
-                            {!((company as any).consultation_fee && (company as any).consultation_fee > 0) && (
-                              <p className="text-xs text-[#F59E0B] mt-2 font-medium">⚠️ Fee not set</p>
-                            )}
-                          </div>
-                          
-                          <Button
-                            fullWidth
-                            onClick={() => handleBookConsultation(company)}
-                            className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
-                          >
-                            Book Consultation
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => handleBookConsultation(company)}
+                                className="whitespace-nowrap bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white"
+                                disabled={!((company as any).consultation_fee && (company as any).consultation_fee > 0)}
+                              >
+                                Book Consultation
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
