@@ -33,7 +33,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
   const [disputeReason, setDisputeReason] = useState('');
   const [refundReason, setRefundReason] = useState('');
   const [evidenceType, setEvidenceType] = useState<'image' | 'video' | 'text'>('image');
-  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceFiles, setEvidenceFiles] = useState<File[]>([]);
   const [evidenceDescription, setEvidenceDescription] = useState('');
   const [adminOverride, setAdminOverride] = useState(false);
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
@@ -1218,27 +1218,37 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
           title="Upload Evidence"
           size="lg"
           primaryAction={{
-            label: isProcessing ? 'Uploading...' : 'Upload Evidence',
+            label: isProcessing ? 'Uploading...' : evidenceFiles.length > 1 ? `Upload ${evidenceFiles.length} files` : 'Upload Evidence',
             onClick: async () => {
               if (!evidenceDescription.trim()) {
                 toast.error('Description is required');
                 return;
               }
-              if (evidenceType !== 'text' && !evidenceFile) {
-                toast.error('File is required for image/video evidence');
+              if (evidenceType !== 'text' && evidenceFiles.length === 0) {
+                toast.error('Select at least one file for image/video evidence');
                 return;
               }
               
               try {
                 setIsProcessing(true);
-                await milestoneService.uploadEvidence(milestone.id, {
-                  type: evidenceType,
-                  file: evidenceFile || undefined,
-                  description: evidenceDescription,
-                });
-                toast.success('Evidence uploaded successfully!');
+                if (evidenceType === 'text') {
+                  await milestoneService.uploadEvidence(milestone.id, {
+                    type: 'text',
+                    description: evidenceDescription,
+                  });
+                  toast.success('Evidence uploaded successfully!');
+                } else {
+                  for (let i = 0; i < evidenceFiles.length; i++) {
+                    await milestoneService.uploadEvidence(milestone.id, {
+                      type: evidenceType,
+                      file: evidenceFiles[i],
+                      description: evidenceDescription,
+                    });
+                  }
+                  toast.success(evidenceFiles.length > 1 ? `${evidenceFiles.length} files uploaded successfully!` : 'Evidence uploaded successfully!');
+                }
                 setUploadEvidenceModalOpen(false);
-                setEvidenceFile(null);
+                setEvidenceFiles([]);
                 setEvidenceDescription('');
                 setEvidenceType('image');
                 loadMilestone();
@@ -1254,7 +1264,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
             label: 'Cancel',
             onClick: () => {
               setUploadEvidenceModalOpen(false);
-              setEvidenceFile(null);
+              setEvidenceFiles([]);
               setEvidenceDescription('');
             },
             disabled: isProcessing,
@@ -1269,7 +1279,7 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                 value={evidenceType}
                 onChange={(e) => {
                   setEvidenceType(e.target.value as 'image' | 'video' | 'text');
-                  setEvidenceFile(null);
+                  setEvidenceFiles([]);
                 }}
                 className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none"
                 disabled={isProcessing}
@@ -1283,26 +1293,41 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
             {(evidenceType === 'image' || evidenceType === 'video') && (
               <div>
                 <label className="block text-sm font-medium text-[#334155] mb-2">
-                  File <span className="text-red-500">*</span>
+                  Files <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="file"
+                  multiple
                   accept={evidenceType === 'image' ? 'image/*' : 'video/*'}
                   onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      setEvidenceFile(e.target.files[0]);
+                    if (e.target.files && e.target.files.length > 0) {
+                      setEvidenceFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                      e.target.value = '';
                     }
                   }}
                   className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none"
                   disabled={isProcessing}
                 />
                 <p className="text-xs text-[#64748B] mt-1">
-                  Max file size: 10MB. Supported: {evidenceType === 'image' ? 'JPG, PNG' : 'MP4, MOV, AVI'}
+                  Max file size: 10MB each. You can select multiple files. Supported: {evidenceType === 'image' ? 'JPG, PNG' : 'MP4, MOV, AVI'}
                 </p>
-                {evidenceFile && (
-                  <p className="text-sm text-[#334155] mt-2">
-                    Selected: {evidenceFile.name}
-                  </p>
+                {evidenceFiles.length > 0 && (
+                  <ul className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                    {evidenceFiles.map((file, idx) => (
+                      <li key={`${file.name}-${idx}`} className="flex items-center justify-between text-sm text-[#334155] bg-[#F8FAFC] rounded px-2 py-1.5">
+                        <span className="truncate flex-1">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEvidenceFiles(prev => prev.filter((_, i) => i !== idx))}
+                          className="ml-2 text-[#DC2626] hover:text-[#B91C1C] p-0.5"
+                          disabled={isProcessing}
+                          title="Remove"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             )}
