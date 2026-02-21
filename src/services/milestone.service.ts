@@ -18,11 +18,12 @@ export interface RejectMilestoneData {
 }
 
 /**
- * Upload Evidence data
+ * Upload Evidence data (single file or multiple files in one request)
  */
 export interface UploadEvidenceData {
   type: 'image' | 'video' | 'text';
   file?: File;
+  files?: File[];
   description: string;
 }
 
@@ -78,14 +79,16 @@ export const milestoneService = {
 
   /**
    * Upload evidence for milestone - COMPANY ONLY
-   * Company uploads photos, videos, or text evidence of milestone completion
+   * Supports single file (file) or multiple files (files) in one request
    */
   async uploadEvidence(id: string, data: UploadEvidenceData): Promise<any> {
     const formData = new FormData();
     formData.append('type', data.type);
     formData.append('description', data.description);
-    
-    if (data.file) {
+
+    if (data.files && data.files.length > 0) {
+      data.files.forEach((f) => formData.append('files[]', f));
+    } else if (data.file) {
       formData.append('file', data.file);
     }
 

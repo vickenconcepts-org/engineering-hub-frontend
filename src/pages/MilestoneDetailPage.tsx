@@ -1238,13 +1238,11 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                   });
                   toast.success('Evidence uploaded successfully!');
                 } else {
-                  for (let i = 0; i < evidenceFiles.length; i++) {
-                    await milestoneService.uploadEvidence(milestone.id, {
-                      type: evidenceType,
-                      file: evidenceFiles[i],
-                      description: evidenceDescription,
-                    });
-                  }
+                  await milestoneService.uploadEvidence(milestone.id, {
+                    type: evidenceType,
+                    files: evidenceFiles,
+                    description: evidenceDescription,
+                  });
                   toast.success(evidenceFiles.length > 1 ? `${evidenceFiles.length} files uploaded successfully!` : 'Evidence uploaded successfully!');
                 }
                 setUploadEvidenceModalOpen(false);
