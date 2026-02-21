@@ -29,8 +29,11 @@ export interface Milestone {
     net_amount?: number;
     platform_fee_percentage?: number;
     status: 'held' | 'released' | 'refunded';
+    payment_reference?: string; // Paystack charge reference
     created_at: string;
     released_at?: string;
+    /** Central reference ID: use to look up client, company, project, milestone (admin API) */
+    hold_reference?: { hold_ref: string };
   };
   evidence?: Array<{
     id: string; // UUID
