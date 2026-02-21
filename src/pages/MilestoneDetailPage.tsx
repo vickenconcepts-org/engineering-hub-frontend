@@ -644,11 +644,17 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                 
                 <div className="pt-4 border-t border-[#E5E7EB]">
                   <p className="text-xs text-[#64748B] mb-3">
-                    {milestone.status === 'submitted' 
-                      ? 'This amount will be released from escrow upon your approval.'
+                    {milestone.status === 'submitted'
+                      ? userRole === 'client'
+                        ? 'This amount will be released from escrow upon your approval.'
+                        : 'This amount will be released from escrow once the client approves the milestone.'
                       : milestone.escrow?.status === 'held'
-                      ? 'Funds are held in escrow. Approve milestone to release payment.'
-                      : 'Fund escrow to proceed with this milestone.'}
+                      ? userRole === 'client'
+                        ? 'Funds are held in escrow. Approve milestone to release payment.'
+                        : 'Funds are held in escrow. Client will approve to release payment to you.'
+                      : userRole === 'client'
+                      ? 'Fund escrow to proceed with this milestone.'
+                      : 'Waiting for client to fund this milestone. You can proceed with work once funding is complete.'}
                   </p>
                 </div>
               </div>
