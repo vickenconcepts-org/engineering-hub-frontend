@@ -71,6 +71,7 @@ export interface MilestoneForRelease {
     amount: number;
     status: string;
     payment_reference: string;
+    hold_reference?: { hold_ref: string };
   };
   project?: {
     id: string; // UUID
@@ -348,6 +349,24 @@ export const adminService = {
    */
   async releaseEscrow(id: string, data: ReleaseEscrowData): Promise<any> {
     const response = await apiClient.post<ApiResponse<any>>(`/admin/milestones/${id}/release`, data);
+    return extractData(response);
+  },
+
+  /**
+   * Get escrow hold reference details by hold_ref (client, company, project, milestone)
+   */
+  async getEscrowHoldRef(holdRef: string): Promise<{
+    hold_ref: string;
+    status: string;
+    paystack_charge_reference: string | null;
+    paystack_transfer_reference: string | null;
+    client: { id: string; name: string; email: string } | null;
+    company: { id: string; company_name: string } | null;
+    project: { id: string; title: string } | null;
+    milestone: { id: string; title: string; amount: number; status: string } | null;
+    escrow: { id: string; amount: number; status: string; payment_reference: string } | null;
+  }> {
+    const response = await apiClient.get<ApiResponse<any>>(`/admin/escrow-hold-refs/${encodeURIComponent(holdRef)}`);
     return extractData(response);
   },
 

@@ -7,7 +7,7 @@ import { Modal } from '../components/Modal';
 import { Select } from '../components/Select';
 import { adminService, MilestoneForRelease } from '../services/admin.service';
 import { paymentAccountService, PaymentAccount } from '../services/payment-account.service';
-import { DollarSign, Eye, CheckCircle, XCircle, Clock, Shield, TrendingUp } from 'lucide-react';
+import { DollarSign, Eye, CheckCircle, XCircle, Clock, Shield, TrendingUp, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatAmountWithCurrency, parseFormattedAmount, isFormattedAmount } from '../lib/money-utils';
 
@@ -27,6 +27,10 @@ export function AdminEscrowPage() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [adminOverride, setAdminOverride] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [holdRefVerifyInput, setHoldRefVerifyInput] = useState('');
+  const [holdRefModalOpen, setHoldRefModalOpen] = useState(false);
+  const [holdRefDetails, setHoldRefDetails] = useState<Awaited<ReturnType<typeof adminService.getEscrowHoldRef>> | null>(null);
+  const [isLoadingHoldRef, setIsLoadingHoldRef] = useState(false);
 
   useEffect(() => {
     loadMilestones();
@@ -224,7 +228,47 @@ export function AdminEscrowPage() {
     }
   };
 
+  const handleVerifyHoldRef = async (holdRef: string) => {
+    const ref = holdRef.trim().toUpperCase();
+    if (!ref) {
+      toast.error('Enter a hold reference (e.g. EHR-XXXXXXXXXXXX)');
+      return;
+    }
+    setIsLoadingHoldRef(true);
+    setHoldRefDetails(null);
+    try {
+      const data = await adminService.getEscrowHoldRef(ref);
+      setHoldRefDetails(data);
+      setHoldRefModalOpen(true);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Hold reference not found');
+    } finally {
+      setIsLoadingHoldRef(false);
+    }
+  };
+
   const columns = [
+    {
+      header: 'Reference',
+      accessor: (milestone: MilestoneForRelease) => {
+        const holdRef = milestone.escrow?.hold_reference?.hold_ref;
+        if (!holdRef) return <span className="text-xs text-[#64748B]">—</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-[#334155]">{holdRef}</span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleVerifyHoldRef(holdRef)}
+              className="text-xs"
+            >
+              <Search className="w-3.5 h-3.5 mr-1" />
+              Verify
+            </Button>
+          </div>
+        );
+      },
+    },
     {
       header: 'Milestone',
       accessor: (milestone: MilestoneForRelease) => {
@@ -377,22 +421,42 @@ export function AdminEscrowPage() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Filters + Verify by reference */}
         <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg p-6">
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-semibold text-[#334155]">Filter by Status:</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value as 'held' | 'released' | 'all');
-                setCurrentPage(1);
-              }}
-              className="px-4 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] bg-white"
-            >
-              <option value="held">Held</option>
-              <option value="released">Released</option>
-              <option value="all">All</option>
-            </select>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-semibold text-[#334155]">Filter by Status:</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as 'held' | 'released' | 'all');
+                  setCurrentPage(1);
+                }}
+                className="px-4 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] bg-white"
+              >
+                <option value="held">Held</option>
+                <option value="released">Released</option>
+                <option value="all">All</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <input
+                type="text"
+                placeholder="Hold reference (e.g. EHR-...)"
+                value={holdRefVerifyInput}
+                onChange={(e) => setHoldRefVerifyInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleVerifyHoldRef(holdRefVerifyInput)}
+                className="px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm font-mono w-48 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleVerifyHoldRef(holdRefVerifyInput)}
+                disabled={isLoadingHoldRef || !holdRefVerifyInput.trim()}
+              >
+                {isLoadingHoldRef ? '...' : <><Search className="w-4 h-4 mr-1" /> Verify by ID</>}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -552,6 +616,62 @@ export function AdminEscrowPage() {
             </ul>
           </div>
         </div>
+      </Modal>
+
+      {/* Verify Hold Reference Modal */}
+      <Modal
+        isOpen={holdRefModalOpen}
+        onClose={() => setHoldRefModalOpen(false)}
+        title="Escrow Hold Reference"
+        secondaryAction={{ label: 'Close', onClick: () => setHoldRefModalOpen(false) }}
+      >
+        {holdRefDetails ? (
+          <div className="space-y-4 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="font-mono font-semibold text-[#1E3A8A]">{holdRefDetails.hold_ref}</span>
+              <StatusBadge status={holdRefDetails.status === 'released' ? 'released' : holdRefDetails.status === 'refunded' ? 'rejected' : 'funded'} />
+            </div>
+            {holdRefDetails.client && (
+              <div>
+                <p className="text-xs font-medium text-[#64748B] uppercase mb-1">Client (payer)</p>
+                <p className="text-[#334155]">{holdRefDetails.client.name} — {holdRefDetails.client.email}</p>
+              </div>
+            )}
+            {holdRefDetails.company && (
+              <div>
+                <p className="text-xs font-medium text-[#64748B] uppercase mb-1">Company (payee)</p>
+                <p className="text-[#334155]">{holdRefDetails.company.company_name}</p>
+              </div>
+            )}
+            {holdRefDetails.project && (
+              <div>
+                <p className="text-xs font-medium text-[#64748B] uppercase mb-1">Project</p>
+                <p className="text-[#334155]">{holdRefDetails.project.title}</p>
+              </div>
+            )}
+            {holdRefDetails.milestone && (
+              <div>
+                <p className="text-xs font-medium text-[#64748B] uppercase mb-1">Milestone</p>
+                <p className="text-[#334155]">{holdRefDetails.milestone.title} — {formatAmountWithCurrency(holdRefDetails.milestone.amount)}</p>
+              </div>
+            )}
+            {holdRefDetails.escrow && (
+              <div>
+                <p className="text-xs font-medium text-[#64748B] uppercase mb-1">Escrow</p>
+                <p className="text-[#334155]">Amount: {formatAmountWithCurrency(holdRefDetails.escrow.amount)} — Status: {holdRefDetails.escrow.status}</p>
+              </div>
+            )}
+            {(holdRefDetails.paystack_charge_reference || holdRefDetails.paystack_transfer_reference) && (
+              <div className="pt-2 border-t border-[#E5E7EB]">
+                <p className="text-xs font-medium text-[#64748B] uppercase mb-1">Paystack refs</p>
+                <p className="text-xs text-[#64748B]">Charge: {holdRefDetails.paystack_charge_reference || '—'}</p>
+                <p className="text-xs text-[#64748B]">Transfer: {holdRefDetails.paystack_transfer_reference || '—'}</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-[#64748B]">No details to show.</p>
+        )}
       </Modal>
       </div>
     </div>

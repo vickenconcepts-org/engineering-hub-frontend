@@ -264,12 +264,15 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
     {
       header: 'Reference',
       accessor: (transaction: Transaction) => {
+        const isEscrowType = ['escrow_deposit', 'escrow_release', 'escrow_refund', 'platform_fee'].includes(transaction.type);
+        const displayRef = isEscrowType && transaction.hold_ref ? transaction.hold_ref : transaction.payment_reference;
+
         const handleCopy = async () => {
-          if (transaction.payment_reference) {
+          if (displayRef) {
             try {
-              await navigator.clipboard.writeText(transaction.payment_reference);
-              setCopiedRef(transaction.payment_reference);
-              toast.success('Reference copied to clipboard');
+              await navigator.clipboard.writeText(displayRef);
+              setCopiedRef(displayRef);
+              toast.success(transaction.hold_ref ? 'Hold reference copied' : 'Reference copied to clipboard');
               setTimeout(() => setCopiedRef(null), 2000);
             } catch (error) {
               toast.error('Failed to copy reference');
@@ -279,17 +282,17 @@ export function TransactionsPage({ onNavigate, userRole }: TransactionsPageProps
 
         return (
           <div className="flex items-center gap-2">
-            {transaction.payment_reference ? (
+            {displayRef ? (
               <>
-                <span className="text-xs text-[#64748B] font-mono">
-                  {transaction.payment_reference}
+                <span className="text-xs text-[#64748B] font-mono" title={isEscrowType && transaction.hold_ref ? 'Escrow Hold Reference (share with admin to verify)' : undefined}>
+                  {displayRef}
                 </span>
                 <button
                   onClick={handleCopy}
                   className="p-1 hover:bg-[#F1F5F9] rounded transition-colors group"
                   title="Copy reference"
                 >
-                  {copiedRef === transaction.payment_reference ? (
+                  {copiedRef === displayRef ? (
                     <Check className="w-3.5 h-3.5 text-[#16A34A]" />
                   ) : (
                     <Copy className="w-3.5 h-3.5 text-[#64748B] group-hover:text-[#1E3A8A]" />

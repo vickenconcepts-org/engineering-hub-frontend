@@ -9,6 +9,8 @@ export interface Transaction {
   amount: string | number; // Backend sends formatted strings (e.g., "10K", "228", "1.5M")
   status: 'success' | 'pending' | 'failed';
   payment_reference?: string;
+  /** Escrow Hold Reference (EHR-xxx) – same for client & company; use for support/admin verification */
+  hold_ref?: string;
   description: string;
   entity_type: string;
   entity_id: string;
