@@ -653,7 +653,9 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
                         ? 'Funds are held in escrow. Approve milestone to release payment.'
                         : 'Funds are held in escrow. Client will approve to release payment to you.'
                       : userRole === 'client'
-                      ? 'Fund escrow to proceed with this milestone.'
+                      ? (milestone.verified_at
+                          ? 'Fund escrow to proceed with this milestone.'
+                          : 'Verify this milestone first to enable funding.')
                       : 'Waiting for client to fund this milestone. You can proceed with work once funding is complete.'}
                   </p>
                 </div>
@@ -792,8 +794,8 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
             </Card>
           )}
           
-          {/* Client: Funding Required */}
-          {userRole === 'client' && milestone.status === 'pending' && !milestone.escrow && (
+          {/* Client: Funding Required (only after milestone is verified) */}
+          {userRole === 'client' && milestone.status === 'pending' && !milestone.escrow && milestone.verified_at && (
             <Card>
               <CardHeader>
                 <CardTitle>Funding Required</CardTitle>

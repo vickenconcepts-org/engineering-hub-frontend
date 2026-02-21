@@ -932,8 +932,8 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                         </Button>
                       )}
                       
-                      {/* Client: Fund escrow (for active projects) */}
-                      {userRole === 'client' && project?.status === 'active' && milestone.status === 'pending' && !milestone.escrow && (
+                      {/* Client: Fund escrow (only after milestone verified; active project) */}
+                      {userRole === 'client' && project?.status === 'active' && milestone.status === 'pending' && !milestone.escrow && milestone.verified_at && (
                         <Button
                           size="sm"
                           className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
