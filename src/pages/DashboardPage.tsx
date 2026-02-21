@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, FolderKanban, DollarSign, Clock, AlertCircle, Video, Mail, FileText, Zap, Plus, BarChart3, TrendingUp, User, ArrowRight } from 'lucide-react';
+import { Calendar, FolderKanban, DollarSign, Clock, AlertCircle, Video, Mail, FileText, Zap, Plus, BarChart3, TrendingUp, User, ArrowRight, Building2, ShieldAlert, Scale } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
 import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
@@ -8,6 +8,7 @@ import { consultationService, Consultation } from '../services/consultation.serv
 import { projectService, Project } from '../services/project.service';
 import { parseFormattedAmount, formatAmountWithCurrency } from '../lib/money-utils';
 import { companyProfileService } from '../services/company-profile.service';
+import { adminService, MilestoneForRelease, Dispute } from '../services/admin.service';
 import toast from 'react-hot-toast';
 
 interface DashboardPageProps {
@@ -21,6 +22,10 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [companyProfileError, setCompanyProfileError] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<any>(null);
+  // Admin dashboard data
+  const [adminMilestonesHeld, setAdminMilestonesHeld] = useState<MilestoneForRelease[]>([]);
+  const [adminPendingCompanies, setAdminPendingCompanies] = useState<any[]>([]);
+  const [adminOpenDisputes, setAdminOpenDisputes] = useState<Dispute[]>([]);
   
   useEffect(() => {
     loadData();
@@ -59,8 +64,16 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
         
         setConsultations(consultationsData.consultations);
         setProjects(projectsData.projects);
+      } else if (userRole === 'admin') {
+        const [milestonesRes, companiesRes, disputesRes] = await Promise.all([
+          adminService.listEscrowMilestones({ status: 'held', per_page: 10 }),
+          adminService.listCompanies({ status: 'pending', per_page: 10 }),
+          adminService.listDisputes({ status: 'open', per_page: 10 }),
+        ]);
+        setAdminMilestonesHeld(milestonesRes.milestones || []);
+        setAdminPendingCompanies(companiesRes.companies || []);
+        setAdminOpenDisputes(disputesRes.disputes || []);
       } else {
-        // Admin or unknown role - skip loading for now
         setIsLoading(false);
       }
     } catch (error) {
@@ -244,6 +257,177 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
     if (diffInMonths === 1) return '1 month ago';
     return `${diffInMonths} months ago`;
   };
+
+  // Admin dashboard: different cards, table, and quick actions
+  if (userRole === 'admin') {
+    const escrowTotalHeld = adminMilestonesHeld.reduce((sum, m) => sum + (m.escrow?.amount ? parseFormattedAmount(String(m.escrow.amount)) : 0), 0);
+    return (
+      <div className="space-y-6 min-h-screen">
+        <div>
+          <h1 className="text-2xl font-semibold text-[#334155] mb-2">Admin Dashboard</h1>
+          <p className="text-sm text-[#64748B]">Platform overview and actions requiring your attention.</p>
+        </div>
+
+        {/* Admin stat cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-[#64748B] mb-2">Pending Companies</p>
+                <p className="text-4xl font-bold text-[#1E3A8A]">{adminPendingCompanies.length}</p>
+                <p className="text-xs text-[#64748B] mt-1">Awaiting approval</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-[#1E3A8A]/10 flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-[#1E3A8A]" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-[#64748B] mb-2">Escrow to Release</p>
+                <p className="text-4xl font-bold text-[#F59E0B]">{adminMilestonesHeld.length}</p>
+                <p className="text-xs text-[#64748B] mt-1">₦{escrowTotalHeld.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} held</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-[#F59E0B]/10 flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-[#F59E0B]" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-[#64748B] mb-2">Open Disputes</p>
+                <p className="text-4xl font-bold text-[#DC2626]">{adminOpenDisputes.length}</p>
+                <p className="text-xs text-[#64748B] mt-1">Need resolution</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-[#DC2626]/10 flex items-center justify-center">
+                <Scale className="w-6 h-6 text-[#DC2626]" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-[#64748B] mb-2">Quick Links</p>
+                <p className="text-sm font-semibold text-[#334155]">Platform</p>
+                <p className="text-xs text-[#64748B] mt-1">Settings & audit</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-[#64748B]/10 flex items-center justify-center">
+                <ShieldAlert className="w-6 h-6 text-[#64748B]" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Admin table: Milestones awaiting release */}
+        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg overflow-hidden">
+          <div className="border-b border-[#E5E7EB] pb-4 px-6 pt-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-[#334155]">Milestones Awaiting Escrow Release</h3>
+              <Button size="sm" variant="primary" onClick={() => navigate('/admin/escrow')}>
+                View all
+              </Button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-[#F8FAFC] border-b border-[#E5E7EB]">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[#64748B] uppercase">Project</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[#64748B] uppercase">Milestone</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[#64748B] uppercase">Company</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[#64748B] uppercase">Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[#64748B] uppercase">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E5E7EB]">
+                {adminMilestonesHeld.length > 0 ? (
+                  adminMilestonesHeld.slice(0, 5).map((m) => (
+                    <tr key={m.id} className="hover:bg-[#F8FAFC]">
+                      <td className="px-6 py-3 font-medium text-[#334155]">{m.project?.title || '—'}</td>
+                      <td className="px-6 py-3 text-[#334155]">{m.title}</td>
+                      <td className="px-6 py-3 text-[#64748B]">{m.project?.company?.user?.name || m.project?.company?.company_name || '—'}</td>
+                      <td className="px-6 py-3 text-[#334155]">{m.escrow?.amount != null ? formatAmountWithCurrency(m.escrow.amount) : '—'}</td>
+                      <td className="px-6 py-3">
+                        <Button size="sm" variant="primary" onClick={() => navigate(`/admin/escrow?release=${m.id}`)}>
+                          Release
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center text-[#64748B]">No milestones awaiting release</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Admin quick actions */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <button
+            onClick={() => navigate('/admin/companies')}
+            className="bg-white rounded-xl border border-[#E5E7EB] shadow p-4 text-left hover:shadow-md hover:border-[#1E3A8A]/30 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#1E3A8A]/10 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-[#1E3A8A]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#334155]">Review Companies</p>
+                <p className="text-xs text-[#64748B]">{adminPendingCompanies.length} pending</p>
+              </div>
+            </div>
+          </button>
+          <button
+            onClick={() => navigate('/admin/escrow')}
+            className="bg-white rounded-xl border border-[#E5E7EB] shadow p-4 text-left hover:shadow-md hover:border-[#F59E0B]/50 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#F59E0B]/10 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-[#F59E0B]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#334155]">Release Escrow</p>
+                <p className="text-xs text-[#64748B]">{adminMilestonesHeld.length} held</p>
+              </div>
+            </div>
+          </button>
+          <button
+            onClick={() => navigate('/admin/disputes')}
+            className="bg-white rounded-xl border border-[#E5E7EB] shadow p-4 text-left hover:shadow-md hover:border-[#DC2626]/30 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#DC2626]/10 flex items-center justify-center">
+                <Scale className="w-5 h-5 text-[#DC2626]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#334155]">Resolve Disputes</p>
+                <p className="text-xs text-[#64748B]">{adminOpenDisputes.length} open</p>
+              </div>
+            </div>
+          </button>
+          <button
+            onClick={() => navigate('/admin/audit-logs')}
+            className="bg-white rounded-xl border border-[#E5E7EB] shadow p-4 text-left hover:shadow-md hover:border-[#64748B]/30 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#64748B]/10 flex items-center justify-center">
+                <ShieldAlert className="w-5 h-5 text-[#64748B]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#334155]">Audit Logs</p>
+                <p className="text-xs text-[#64748B]">Activity</p>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6  min-h-screen">
