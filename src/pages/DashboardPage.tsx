@@ -143,12 +143,12 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
     return Math.round((completedMilestones / project.milestones.length) * 100);
   };
   
-  // Calculate sent and scheduled counts for consultations
-  const sentConsultations = consultations.filter(c => c.status === 'completed').length;
+  // Consultation breakdown: completed (done) vs scheduled (upcoming)
+  const completedConsultations = consultations.filter(c => c.status === 'completed').length;
   const scheduledConsultations = consultations.filter(c => c.status === 'scheduled').length;
-  
-  const sentProjects = projects.filter(p => p.status === 'active').length;
-  const scheduledProjects = projects.filter(p => p.status === 'draft').length;
+  // Project breakdown: active (in progress) vs draft (not yet started)
+  const activeProjectsCount = projects.filter(p => p.status === 'active').length;
+  const draftProjectsCount = projects.filter(p => p.status === 'draft').length;
 
   const stats = [
     {
@@ -170,7 +170,7 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
       bgGradient: 'bg-white',
       iconBg: 'bg-[#1E3A8A]/10',
       change: '0%',
-      sent: `${sentConsultations} sent`,
+      completed: `${completedConsultations} completed`,
       scheduled: `${scheduledConsultations} scheduled`,
       textColor: 'text-[#1E3A8A]',
     },
@@ -182,8 +182,8 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
       bgGradient: 'bg-white',
       iconBg: 'bg-[#F59E0B]/10',
       change: '0%',
-      sent: `${sentProjects} sent`,
-      scheduled: `${scheduledProjects} scheduled`,
+      active: `${activeProjectsCount} active`,
+      draft: `${draftProjectsCount} draft`,
       textColor: 'text-[#F59E0B]',
     },
   ];
@@ -321,7 +321,7 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
               <p className="text-sm font-medium text-[#1E3A8A] mb-2">Consultations</p>
               <p className="text-4xl font-bold text-[#1E3A8A] mb-3">{consultations.length}</p>
               <div className="space-y-1">
-                <p className="text-sm text-[#1E3A8A]">{sentConsultations} sent</p>
+                <p className="text-sm text-[#1E3A8A]">{completedConsultations} completed</p>
                 <p className="text-sm text-[#F59E0B]">{scheduledConsultations} scheduled</p>
               </div>
             </div>
@@ -338,8 +338,8 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
               <p className="text-sm font-medium text-[#F59E0B] mb-2">Active Projects</p>
               <p className="text-4xl font-bold text-[#F59E0B] mb-3">{activeProjects}</p>
               <div className="space-y-1">
-                <p className="text-sm text-[#F59E0B]">{sentProjects} sent</p>
-                <p className="text-sm text-[#F59E0B]">{scheduledProjects} scheduled</p>
+                <p className="text-sm text-[#F59E0B]">{activeProjectsCount} active</p>
+                <p className="text-sm text-[#F59E0B]">{draftProjectsCount} draft</p>
               </div>
             </div>
             <div className="w-16 h-16 rounded-full bg-[#F59E0B]/10 flex items-center justify-center">
