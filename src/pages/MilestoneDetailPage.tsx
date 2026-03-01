@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Image as ImageIcon, Video, CheckCircle, X, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon, Video, CheckCircle, X, MessageSquare, Upload } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
@@ -15,6 +15,178 @@ import apiClient from '../lib/api-client';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { formatAmountWithCurrency, parseFormattedAmount } from '../lib/money-utils';
+
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const ACCEPTED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+const ACCEPTED_IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.webp'];
+const ACCEPTED_VIDEO_EXT = ['.mp4', '.mov', '.avi', '.webm'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+function EvidenceDropzone({
+  evidenceType,
+  files,
+  onFilesChange,
+  disabled,
+}: {
+  evidenceType: 'image' | 'video';
+  files: File[];
+  onFilesChange: (files: File[]) => void;
+  disabled: boolean;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [previews, setPreviews] = useState<Record<string, string>>({});
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const acceptedTypes = evidenceType === 'image' ? ACCEPTED_IMAGE_TYPES : ACCEPTED_VIDEO_TYPES;
+  const acceptedExt = evidenceType === 'image' ? ACCEPTED_IMAGE_EXT : ACCEPTED_VIDEO_EXT;
+  const acceptAttr = evidenceType === 'image'
+    ? 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
+    : 'video/mp4,video/quicktime,video/x-msvideo,video/webm,.mp4,.mov,.avi,.webm';
+
+  useEffect(() => {
+    const newPreviews: Record<string, string> = {};
+    files.forEach((file, idx) => {
+      const key = `${file.name}-${idx}`;
+      if (file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file);
+        newPreviews[key] = url;
+      }
+    });
+    setPreviews(newPreviews);
+    return () => {
+      Object.values(newPreviews).forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [files]);
+
+  const validateAndAdd = (incoming: File[]) => {
+    const valid: File[] = [];
+    for (const file of incoming) {
+      const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+      const typeOk = acceptedTypes.includes(file.type) || acceptedExt.includes(ext);
+      if (!typeOk) {
+        toast.error(`"${file.name}" is not a valid ${evidenceType} file. Supported: ${acceptedExt.join(', ')}`);
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`"${file.name}" exceeds 10MB limit`);
+        continue;
+      }
+      valid.push(file);
+    }
+    if (valid.length > 0) {
+      onFilesChange([...files, ...valid]);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (disabled) return;
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    validateAndAdd(droppedFiles);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      validateAndAdd(Array.from(e.target.files));
+      e.target.value = '';
+    }
+  };
+
+  const removeFile = (idx: number) => {
+    onFilesChange(files.filter((_, i) => i !== idx));
+  };
+
+  const isImage = evidenceType === 'image';
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-[#334155] mb-2">
+        Files <span className="text-red-500">*</span>
+      </label>
+
+      <div
+        className={`border-2 border-dashed rounded-lg transition-colors ${
+          isDragging
+            ? 'border-[#1E3A8A] bg-[#EFF6FF]'
+            : 'border-[#E5E7EB] bg-white hover:border-[#1E3A8A] hover:bg-[#F8FAFC]'
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        onDragOver={(e) => { e.preventDefault(); if (!disabled) setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+        onClick={() => !disabled && inputRef.current?.click()}
+      >
+        <div className="p-6 text-center">
+          {isImage ? (
+            <ImageIcon className="w-10 h-10 text-[#94A3B8] mx-auto mb-2" />
+          ) : (
+            <Video className="w-10 h-10 text-[#94A3B8] mx-auto mb-2" />
+          )}
+          <p className="text-sm font-medium text-[#334155] mb-1">
+            Click to select or drag & drop {isImage ? 'photos' : 'videos'}
+          </p>
+          <p className="text-xs text-[#64748B]">
+            {isImage ? 'JPG, PNG, WebP' : 'MP4, MOV, AVI, WebM'} &bull; Max 10MB each &bull; Multiple files allowed
+          </p>
+        </div>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        accept={acceptAttr}
+        onChange={handleInputChange}
+        disabled={disabled}
+        className="hidden"
+      />
+
+      {files.length > 0 && (
+        <div className={`mt-3 grid gap-2 ${isImage ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-1'}`}>
+          {files.map((file, idx) => {
+            const key = `${file.name}-${idx}`;
+            return (
+              <div
+                key={key}
+                className={`relative group rounded-lg border border-[#E5E7EB] bg-[#F8FAFC] overflow-hidden ${
+                  isImage ? 'aspect-square' : 'flex items-center gap-3 px-3 py-2.5'
+                }`}
+              >
+                {isImage && previews[key] ? (
+                  <img src={previews[key]} alt={file.name} className="w-full h-full object-cover" />
+                ) : isImage ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageIcon className="w-6 h-6 text-[#94A3B8]" />
+                  </div>
+                ) : (
+                  <>
+                    <Video className="w-5 h-5 text-[#1E3A8A] flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[#334155] truncate">{file.name}</p>
+                      <p className="text-xs text-[#94A3B8]">{(file.size / (1024 * 1024)).toFixed(1)} MB</p>
+                    </div>
+                  </>
+                )}
+                {!disabled && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
+                    className={`absolute top-1 right-1 bg-red-500/90 hover:bg-red-600 text-white rounded-full p-0.5 transition-opacity ${
+                      isImage ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
+                    }`}
+                    title="Remove"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface MilestoneDetailPageProps {
   onNavigate: (path: string) => void;
@@ -1289,45 +1461,12 @@ export function MilestoneDetailPage({ onNavigate, userRole }: MilestoneDetailPag
             </div>
             
             {(evidenceType === 'image' || evidenceType === 'video') && (
-              <div>
-                <label className="block text-sm font-medium text-[#334155] mb-2">
-                  Files <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="file"
-                  multiple
-                  accept={evidenceType === 'image' ? 'image/*' : 'video/*'}
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      setEvidenceFiles(prev => [...prev, ...Array.from(e.target.files!)]);
-                      e.target.value = '';
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none"
-                  disabled={isProcessing}
-                />
-                <p className="text-xs text-[#64748B] mt-1">
-                  Max file size: 10MB each. You can select multiple files. Supported: {evidenceType === 'image' ? 'JPG, PNG' : 'MP4, MOV, AVI'}
-                </p>
-                {evidenceFiles.length > 0 && (
-                  <ul className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-                    {evidenceFiles.map((file, idx) => (
-                      <li key={`${file.name}-${idx}`} className="flex items-center justify-between text-sm text-[#334155] bg-[#F8FAFC] rounded px-2 py-1.5">
-                        <span className="truncate flex-1">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => setEvidenceFiles(prev => prev.filter((_, i) => i !== idx))}
-                          className="ml-2 text-[#DC2626] hover:text-[#B91C1C] p-0.5"
-                          disabled={isProcessing}
-                          title="Remove"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <EvidenceDropzone
+                evidenceType={evidenceType}
+                files={evidenceFiles}
+                onFilesChange={setEvidenceFiles}
+                disabled={isProcessing}
+              />
             )}
             
             <div>

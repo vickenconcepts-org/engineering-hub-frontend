@@ -1213,7 +1213,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
             </div>
           )}
 
-          <div>
+          <div className="rounded-xl border border-[#E5E7EB] p-5 bg-[#FAFBFC]">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm font-semibold text-[#334155]">Project Preview Image</p>
@@ -1272,7 +1272,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
               <p className="text-sm font-semibold text-[#334155]">Required Drawings</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
+              <div className="rounded-xl border border-[#E5E7EB] p-4 bg-[#FAFBFC]">
                 {userRole === 'company' && project.drawing_architectural_url && !canUpdateDocument('drawing_architectural') && (
                   <div className="mb-2 flex justify-end">
                     {hasPendingRequest('drawing_architectural') ? (
@@ -1318,7 +1318,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                   onView={() => project.drawing_architectural_url && openDocumentViewer(project.drawing_architectural_url, 'Architectural Drawing')}
                 />
               </div>
-              <div>
+              <div className="rounded-xl border border-[#E5E7EB] p-4 bg-[#FAFBFC]">
                 {userRole === 'company' && project.drawing_structural_url && !canUpdateDocument('drawing_structural') && (
                   <div className="mb-2 flex justify-end">
                     {hasPendingRequest('drawing_structural') ? (
@@ -1364,7 +1364,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                   onView={() => project.drawing_structural_url && openDocumentViewer(project.drawing_structural_url, 'Structural Drawing')}
                 />
               </div>
-              <div>
+              <div className="rounded-xl border border-[#E5E7EB] p-4 bg-[#FAFBFC]">
                 {userRole === 'company' && project.drawing_mechanical_url && !canUpdateDocument('drawing_mechanical') && (
                   <div className="mb-2 flex justify-end">
                     {hasPendingRequest('drawing_mechanical') ? (
@@ -1410,7 +1410,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
                   onView={() => project.drawing_mechanical_url && openDocumentViewer(project.drawing_mechanical_url, 'Mechanical Drawing')}
                 />
               </div>
-              <div>
+              <div className="rounded-xl border border-[#E5E7EB] p-4 bg-[#FAFBFC]">
                 {userRole === 'company' && project.drawing_technical_url && !canUpdateDocument('drawing_technical') && (
                   <div className="mb-2 flex justify-end">
                     {hasPendingRequest('drawing_technical') ? (
@@ -1485,7 +1485,7 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
             {project.documents && project.documents.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 {project.documents.map((doc) => (
-                  <div key={doc.id}>
+                  <div key={doc.id} className="rounded-xl border border-[#E5E7EB] p-4 bg-[#FAFBFC]">
                     {userRole === 'company' && (
                       <div className="mb-2 flex justify-end">
                         {hasPendingRequest('extra_document', doc.id) ? (
