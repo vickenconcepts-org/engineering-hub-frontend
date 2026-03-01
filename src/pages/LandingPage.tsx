@@ -265,7 +265,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-[#334155]">BuildTrust</h3>
-                <p className="text-xs text-[#64748B]">Build safely at home from anywhere</p>
+                <p className="text-xs text-[#64748B]">Build at home. Stay in control.</p>
               </div>
             </div>
             <p className="text-sm text-[#64748B] text-center md:text-right">
