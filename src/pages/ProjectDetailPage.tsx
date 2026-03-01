@@ -819,178 +819,137 @@ export function ProjectDetailPage({ userRole }: ProjectDetailPageProps) {
               </div>
             </div>
           ) : milestones.length > 0 ? (
-            milestones.map((milestone) => {
-              // Find dispute for this milestone
-              const milestoneDispute = project.disputes?.find(d => d.milestone_id === milestone.id);
-              
-              return (
-                <div
-                  key={milestone.id}
-                  className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  <div 
-                    onClick={() => navigate(`/milestones/${milestone.id}`)}
-                    className="p-6 cursor-pointer"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {milestones.map((milestone) => {
+                const milestoneDispute = project.disputes?.find(d => d.milestone_id === milestone.id);
+
+                return (
+                  <div
+                    key={milestone.id}
+                    className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm hover:shadow-md transition-shadow flex flex-col"
                   >
-                    <div className="flex items-start gap-4 mb-6">
-                      <div className={`w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0 ${getMilestoneStatusColor(milestone.status)}`}>
-                        {getMilestoneStatusIcon(milestone.status)}
+                    {/* Card Header: sequence badge + status */}
+                    <div className="flex items-center justify-between px-5 pt-4 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${getMilestoneStatusColor(milestone.status)}`}>
+                          {milestone.sequence_order}
+                        </div>
+                        <h3 className="text-sm font-semibold text-[#334155] line-clamp-1">
+                          {milestone.title}
+                        </h3>
                       </div>
-                      
-                      <div className="flex-1 h-[100px]">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-[#334155] mb-2">
-                              {milestone.title}
-                            </h3>
-                            {milestone.description && (
-                              <p className="text-sm text-[#64748B] leading-relaxed mb-4">{milestone.description}</p>
-                            )}
-                          </div>
-                          <div className="ml-4">
-                            <div className="bg-gradient-to-br from-[#1E3A8A]/5 to-[#2563EB]/5 rounded-lg p-4 border border-[#E5E7EB] min-w-[120px]">
-                              <p className="text-xs text-[#64748B] mb-1 font-medium">Amount</p>
-                              <p className="text-xl font-bold text-[#1E3A8A]">
-                                {formatAmountWithCurrency(milestone.amount)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Badges and Info Row */}
-                        <div className="flex flex-wrap items-center gap-3 mb-4">
-                          <StatusBadge status={milestone.status} />
-                          
-                          {/* Show verification status */}
-                          {milestone.verified_at && (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D1FAE5] text-[#065F46] border border-[#A7F3D0] text-xs font-medium">
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              <span>Verified</span>
-                            </div>
-                          )}
-                          
-                          {/* Show notes indicators */}
-                          {(milestone.client_notes || milestone.company_notes) && (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F8FAFC] text-[#64748B] border border-[#E5E7EB] text-xs font-medium">
-                              <MessageSquare className="w-3.5 h-3.5" />
-                              <span>
-                                {milestone.client_notes && milestone.company_notes 
-                                  ? 'Both have notes' 
-                                  : milestone.client_notes 
-                                    ? 'Client notes' 
-                                    : 'Company notes'}
-                              </span>
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#E5E7EB]">
-                            <div className="w-6 h-6 rounded-lg bg-[#1E3A8A]/10 flex items-center justify-center">
-                              <span className="text-xs font-semibold text-[#1E3A8A]">{milestone.sequence_order}</span>
-                            </div>
-                            <span className="text-xs text-[#64748B] font-medium">Sequence</span>
-                          </div>
-                          
-                          {milestone.escrow && (
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#E5E7EB]">
-                              <Shield className="w-4 h-4 text-[#1E3A8A]" />
-                              <span className="text-xs text-[#64748B] font-medium">Escrow: {milestone.escrow.status}</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Show rejection reason for companies */}
-                        {userRole === 'company' && milestone.status === 'rejected' && milestoneDispute && (
-                          <div className="mt-3 p-4 bg-[#FEF3C7] rounded-lg border border-[#FCD34D]">
-                            <p className="text-xs text-[#64748B] mb-1 font-semibold">
-                              Rejection Reason
-                            </p>
-                            <p className="text-sm text-[#334155]">
-                              {milestoneDispute.reason}
-                            </p>
-                          </div>
+                      <StatusBadge status={milestone.status} />
+                    </div>
+
+                    {/* Card Body */}
+                    <div
+                      className="flex-1 px-5 pb-3 cursor-pointer"
+                      onClick={() => navigate(`/milestones/${milestone.id}`)}
+                    >
+                      {milestone.description && (
+                        <p className="text-xs text-[#64748B] leading-relaxed line-clamp-2 mb-3">{milestone.description}</p>
+                      )}
+
+                      {/* Amount */}
+                      <div className="bg-[#F8FAFC] rounded-lg px-4 py-3 border border-[#E5E7EB] mb-3">
+                        <p className="text-xs text-[#64748B] mb-0.5">Amount</p>
+                        <p className="text-lg font-bold text-[#1E3A8A]">
+                          {formatAmountWithCurrency(milestone.amount)}
+                        </p>
+                      </div>
+
+                      {/* Info chips */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {milestone.verified_at && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#D1FAE5] text-[#065F46] text-[10px] font-semibold border border-[#A7F3D0]">
+                            <CheckCircle className="w-3 h-3" />
+                            Verified
+                          </span>
+                        )}
+                        {milestone.escrow && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#EFF6FF] text-[#1E3A8A] text-[10px] font-semibold border border-[#BFDBFE]">
+                            <Shield className="w-3 h-3" />
+                            Escrow: {milestone.escrow.status}
+                          </span>
+                        )}
+                        {(milestone.client_notes || milestone.company_notes) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#F8FAFC] text-[#64748B] text-[10px] font-semibold border border-[#E5E7EB]">
+                            <MessageSquare className="w-3 h-3" />
+                            Notes
+                          </span>
                         )}
                       </div>
+
+                      {/* Rejection reason */}
+                      {userRole === 'company' && milestone.status === 'rejected' && milestoneDispute && (
+                        <div className="mt-3 p-3 bg-[#FEF3C7] rounded-lg border border-[#FCD34D]">
+                          <p className="text-[10px] text-[#92400E] font-semibold uppercase tracking-wide mb-0.5">Rejection Reason</p>
+                          <p className="text-xs text-[#334155] line-clamp-2">{milestoneDispute.reason}</p>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  
-                  {/* Actions Section - Separated at bottom */}
-                  <div className="px-6 pb-6 pt-0 border-t border-[#E5E7EB]">
-                    <div className="flex items-center justify-end gap-3 mt-4">
-                      {/* Client: Verify milestone (for draft projects) */}
+
+                    {/* Card Footer: actions */}
+                    <div className="px-5 py-3 border-t border-[#E5E7EB] flex flex-wrap items-center gap-2">
                       {userRole === 'client' && project?.status === 'draft' && !milestone.verified_at && (
                         <Button
                           size="sm"
                           variant="primary"
-                          className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openVerifyModal(milestone);
-                          }}
+                          className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white text-xs px-3 py-1.5"
+                          onClick={(e) => { e.stopPropagation(); openVerifyModal(milestone); }}
                         >
-                          <CheckCircle className="w-4 h-4 mr-1.5" />
-                          Verify Milestone
+                          <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                          Verify
                         </Button>
                       )}
-                      
-                      {/* Client: Fund escrow (only after milestone verified; active project) */}
+
                       {userRole === 'client' && project?.status === 'active' && milestone.status === 'pending' && !milestone.escrow && milestone.verified_at && (
                         <Button
                           size="sm"
-                          className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFundMilestone(milestone.id);
-                          }}
+                          className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white text-xs px-3 py-1.5"
+                          onClick={(e) => { e.stopPropagation(); handleFundMilestone(milestone.id); }}
                         >
-                          <DollarSign className="w-4 h-4 mr-1.5" />
-                          Fund Escrow
+                          <DollarSign className="w-3.5 h-3.5 mr-1" />
+                          Fund
                         </Button>
                       )}
-                      
-                      {/* Add Notes button */}
-                      {(userRole === 'client' || userRole === 'company') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openNotesModal(milestone);
-                          }}
-                        >
-                          <MessageSquare className="w-4 h-4 mr-1.5" />
-                          Notes
-                        </Button>
-                      )}
-                      
+
                       {userRole === 'company' && milestone.status === 'rejected' && (
                         <Button
                           size="sm"
                           variant="primary"
-                          className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-md hover:shadow-lg transition-all"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/milestones/${milestone.id}`);
-                          }}
+                          className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white text-xs px-3 py-1.5"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/milestones/${milestone.id}`); }}
                         >
-                          View & Revise
+                          Revise
                         </Button>
                       )}
-                      
+
+                      <div className="flex-1" />
+
+                      {(userRole === 'client' || userRole === 'company') && (
+                        <button
+                          className="p-1.5 rounded-md text-[#64748B] hover:text-[#334155] hover:bg-[#F1F5F9] transition-colors"
+                          onClick={(e) => { e.stopPropagation(); openNotesModal(milestone); }}
+                          title="Notes"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </button>
+                      )}
+
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/milestones/${milestone.id}`);
-                        }}
+                        className="text-xs px-3 py-1.5"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/milestones/${milestone.id}`); }}
                       >
                         View Details
                       </Button>
                     </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           ) : null}
         </div>
       )}
