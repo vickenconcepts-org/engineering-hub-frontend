@@ -28,8 +28,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             </Button>
             <Button 
               onClick={() => onNavigate('/register')}
-              className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] transition-all duration-500"
-              style={{ transitionDelay: '300ms' }}
+              className="bg-gradient-to-r from-[#1E3A8A] via-[#2563EB] to-[#3B82F6] bg-[length:200%_100%] bg-left hover:bg-right transition-all duration-700 ease-in-out hover:shadow-lg hover:shadow-blue-500/25"
             >
               Get Started
             </Button>
@@ -76,7 +75,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                 onClick={() => onNavigate('/consultations')}
                 className="inline-flex items-center justify-center gap-2 rounded-lg font-semibold border-2 border-white text-white hover:bg-white/10 px-8 py-6 text-lg backdrop-blur-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#1E3A8A]"
               >
-                Book Consultation (Paid)
+                Book Consultation
               </button>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 mt-12 text-white/80">
