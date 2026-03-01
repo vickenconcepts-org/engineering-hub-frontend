@@ -26,12 +26,12 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             >
               Sign In
             </Button>
-            <Button 
+            <button 
               onClick={() => onNavigate('/register')}
-              className="bg-gradient-to-r from-[#1E3A8A] via-[#2563EB] to-[#3B82F6] bg-[length:200%_100%] bg-left hover:bg-right transition-all duration-700 ease-in-out hover:shadow-lg hover:shadow-blue-500/25"
+              className="inline-flex items-center justify-center gap-2 rounded-lg font-medium px-4 py-2 text-sm text-white bg-gradient-to-r from-[#1E3A8A] via-[#2563EB] to-[#3B82F6] bg-[length:200%_100%] bg-left hover:bg-right transition-all duration-700 ease-in-out hover:shadow-lg hover:shadow-blue-500/25 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1E3A8A]"
             >
               Get Started
-            </Button>
+            </button>
           </div>
         </div>
       </header>
@@ -265,7 +265,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-[#334155]">BuildTrust</h3>
-                <p className="text-xs text-[#64748B]">Secure construction for international clients</p>
+                <p className="text-xs text-[#64748B]">Build safely at home from anywhere</p>
               </div>
             </div>
             <p className="text-sm text-[#64748B] text-center md:text-right">
